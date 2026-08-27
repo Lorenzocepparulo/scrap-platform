@@ -202,6 +202,48 @@ def delete_maps_job(job_id: int, request: Request):
     return {"ok": True}
 
 
+@app.get("/api/monitors/{mid}/export")
+def export_monitor_xlsx(mid: int, request: Request):
+    """Genera un Excel con tutti gli annunci del monitor (campi dal JSON dati)."""
+    _require_auth(request)
+    monitor = db.get_monitor(mid)
+    if not monitor:
+        raise HTTPException(status_code=404, detail="Monitor non trovato")
+    annunci = db.list_annunci(mid)
+    import pandas as pd
+    rows = []
+    for a in annunci:
+        try:
+            d = json.loads(a.get("dati") or "{}")
+        except Exception:
+            d = {}
+        rows.append({
+            "ID": a.get("annuncio_id"),
+            "Prezzo €": a.get("prezzo_attuale"),
+            "Prezzo iniziale €": a.get("prezzo_iniziale"),
+            "Ribassi": a.get("num_ribassi"),
+            "Tipologia": d.get("tipologia", ""),
+            "Superficie mq": d.get("superficie_mq", ""),
+            "Locali": d.get("locali", ""),
+            "Bagni": d.get("bagni", ""),
+            "Piano": d.get("piano", ""),
+            "Indirizzo/Zona": d.get("indirizzo", ""),
+            "Agenzia": d.get("nome_agenzia", ""),
+            "Contratto": d.get("contratto", ""),
+            "URL": a.get("url"),
+            "Stato": a.get("stato"),
+            "Primo avvistamento": a.get("data_primo_avvistamento"),
+            "Ultimo avvistamento": a.get("data_ultimo_avvistamento"),
+            "Giorni online": a.get("giorni_online"),
+        })
+    df = pd.DataFrame(rows)
+    out_dir = DOWNLOADS_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fname = f"immobiliare_{mid}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    df.to_excel(out_dir / fname, index=False, engine="openpyxl")
+    return {"filename": fname, "url": f"/api/download/{fname}", "righe": len(rows)}
+
+
 @app.get("/api/download/{filename}")
 def download(filename: str, request: Request):
     _require_auth(request)

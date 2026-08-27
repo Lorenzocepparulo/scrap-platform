@@ -259,16 +259,24 @@ function showDetail(id){
   api(`/api/monitors/${id}`).then(m=>{
     document.getElementById('monitor-detail').classList.remove('hidden');
     document.getElementById('detail-title').textContent = `${m.nome} — ${m.annunci.length} annunci`;
-    const cols = ['annuncio_id','prezzo_attuale','prezzo_iniziale','num_ribassi','tipologia','superficie_mq','indirizzo','stato','data_primo_avvistamento','data_ultimo_avvistamento','giorni_online'];
-    const headers = {'annuncio_id':'ID','prezzo_attuale':'Prezzo','prezzo_iniziale':'Prezzo iniz.','num_ribassi':'Ribassi','tipologia':'Tipo','superficie_mq':'mq','indirizzo':'Zona','stato':'Stato','data_primo_avvistamento':'Primo visto','data_ultimo_avvistamento':'Ultimo visto','giorni_online':'Giorni online'};
-    let html = '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-left text-gray-500 border-b">'+
+    const cols = ['annuncio_id','prezzo_attuale','tipologia','superficie_mq','locali','bagni','piano','indirizzo','nome_agenzia','url','stato','giorni_online'];
+    const headers = {'annuncio_id':'ID','prezzo_attuale':'Prezzo','tipologia':'Tipo','superficie_mq':'mq','locali':'Locali','bagni':'Bagni','piano':'Piano','indirizzo':'Zona','nome_agenzia':'Agenzia','url':'Link','stato':'Stato','giorni_online':'Giorni online'};
+    let html = `<div class="flex items-center gap-3 mb-3">
+        <button onclick="exportMonitor(${m.id})" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3 py-1.5 font-semibold">⬇ Scarica Excel</button>
+        <span class="text-xs text-gray-500">${m.annunci.length} annunci</span>
+      </div>`;
+    html += '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-left text-gray-500 border-b">'+
       cols.map(c=>`<th class="py-2 pr-3">${headers[c]}</th>`).join('')+'</tr></thead><tbody>';
     m.annunci.forEach(a=>{
+      let d = {};
+      try { d = JSON.parse(a.dati || '{}'); } catch(e){}
       const prezzo = a.prezzo_attuale ? '€ '+Number(a.prezzo_attuale).toLocaleString('it-IT') : '—';
       const stato = a.stato==='attivo' ? '<span class="text-green-600">attivo</span>' : '<span class="text-red-500">venduto/rimosso</span>';
       html += `<tr class="border-b border-gray-100">`+cols.map(c=>{
         if(c==='prezzo_attuale') return `<td class="py-2 pr-3 font-semibold">${prezzo}</td>`;
         if(c==='stato') return `<td class="py-2 pr-3">${stato}</td>`;
+        if(c==='url') return `<td class="py-2 pr-3"><a href="${esc(a.url)}" target="_blank" rel="noopener" class="text-blue-600 hover:underline">🔗 apri</a></td>`;
+        if(c==='tipologia'||c==='superficie_mq'||c==='locali'||c==='bagni'||c==='piano'||c==='indirizzo'||c==='nome_agenzia') return `<td class="py-2 pr-3">${esc(d[c]||'')}</td>`;
         return `<td class="py-2 pr-3">${esc(a[c])}</td>`;
       }).join('')+`</tr>`;
     });
@@ -280,6 +288,12 @@ function showDetail(id){
     }
     document.getElementById('detail-body').innerHTML = html;
   }).catch(e=>alert('Errore: '+e.message));
+}
+function exportMonitor(id){
+  api(`/api/monitors/${id}/export`, {method:'GET'}).then(r=>{
+    if(r && r.url){ window.open(r.url, '_blank'); }
+    else alert('Export non riuscito');
+  }).catch(e=>alert('Errore export: '+e.message));
 }
 function closeDetail(){ document.getElementById('monitor-detail').classList.add('hidden'); }
 
