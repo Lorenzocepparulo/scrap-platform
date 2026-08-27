@@ -28,7 +28,8 @@ FIELD_MAP = {
     "orari": "opening_hours",
     "coordinate": "coordinates",
 }
-DEFAULT_FIELDS = ["nome", "categoria", "indirizzo", "telefono", "sito_web", "email", "rating", "recensioni", "orari", "coordinate"]
+# ⚠️ Output FISSO: tutte le ricerche producono sempre le stesse colonne (richiesta Lorenzo)
+DEFAULT_FIELDS = ["categoria", "indirizzo", "telefono", "sito_web"]
 
 
 def _fields_to_csv_cols(campi: list[str]) -> list[str]:
@@ -39,9 +40,11 @@ def _fields_to_csv_cols(campi: list[str]) -> list[str]:
 
 
 def run_maps_job(job_id: int, query: str, campi: list[str]):
-    """Esegue gosom in background e produce l'xlsx. Da lanciare in un thread."""
+    """Esegue gosom in background e produce l'xlsx. Da lanciare in un thread.
+    I campi sono IGNORATI: l'output usa sempre DEFAULT_FIELDS (fisso)."""
     update_maps_job(job_id, stato="in_corso")
     filename = None
+    campi = DEFAULT_FIELDS  # output fisso indipendentemente dalla selezione
     try:
         if not os.path.exists(config.GMAPS_BINARY):
             raise RuntimeError(f"Binario gosom non trovato: {config.GMAPS_BINARY}")

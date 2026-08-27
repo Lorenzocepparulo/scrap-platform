@@ -101,9 +101,8 @@
             <label class="block text-xs font-medium text-gray-600 mb-1">Query (libera + area)</label>
             <input id="g-query" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="es. agenzie immobiliari Lombardia">
           </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-600 mb-2">Campi da includere</label>
-            <div id="g-campi" class="grid grid-cols-2 gap-1 text-xs text-gray-700"></div>
+          <div class="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+            📄 Il file Excel includerà sempre: <b>Categoria · Indirizzo · Telefono · Sito web</b>
           </div>
           <button onclick="launchMaps()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg py-2.5 text-sm transition">▶ Avvia scraping</button>
         </div>
@@ -138,11 +137,7 @@ const CAMPI_PORTALI = [
   ["contratto","Contratto"],["privato_agenzia","Privato/Agenzia"],["nome_agenzia","Nome agenzia"],
   ["riferimento","Riferimento"],["url","URL"],["data_pubblicazione","Data pubblicazione"]
 ];
-const CAMPI_MAPS = [
-  ["nome","Nome"],["categoria","Categoria"],["indirizzo","Indirizzo"],["telefono","Telefono"],
-  ["sito_web","Sito web"],["email","Email"],["rating","Rating"],["recensioni","Recensioni"],
-  ["orari","Orari"],["coordinate","Coordinate"]
-];
+
 
 function api(path, opts={}) {
   return fetch(path, {headers: {'Content-Type':'application/json'}, ...opts}).then(async r => {
@@ -174,7 +169,7 @@ function buildCheckboxes(containerId, fields, checkedAll=true){
   c.innerHTML = fields.map(([k,l])=>`<label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" value="${k}" ${checkedAll?'checked':''} class="rounded border-gray-300"> ${l}</label>`).join('');
 }
 buildCheckboxes('m-campi', CAMPI_PORTALI);
-buildCheckboxes('g-campi', CAMPI_MAPS);
+// campi fissi: output sempre Categoria, Indirizzo, Telefono, Sito web
 
 // ---- portali ----
 api('/api/portali').then(list=>{
@@ -276,8 +271,7 @@ function closeDetail(){ document.getElementById('monitor-detail').classList.add(
 
 // ---- maps ----
 function launchMaps(){
-  const campi = [...document.querySelectorAll('#g-campi input:checked')].map(i=>i.value);
-  api('/api/maps', {method:'POST', body: JSON.stringify({query: document.getElementById('g-query').value, campi})})
+  api('/api/maps', {method:'POST', body: JSON.stringify({query: document.getElementById('g-query').value})})
     .then(()=>{ alert('Scraping avviato. Il file Excel sarà pronto in qualche minuto qui sotto.'); loadMapsJobs(); })
     .catch(e=>alert('Errore: '+e.message));
 }

@@ -54,6 +54,6 @@ if _sa_raw:
 
 # Google Maps (gosom)
 GMAPS_BINARY = os.environ.get("SCRAP_GMAPS_BINARY", "/usr/local/bin/gm_scraper")
-GMAPS_DEPTH = int(os.environ.get("SCRAP_GMAPS_DEPTH", "3"))
-GMAPS_CONCURRENCY = int(os.environ.get("SCRAP_GMAPS_CONCURRENCY", "2"))
-GMAPS_TIMEOUT_MIN = int(os.environ.get("SCRAP_GMAPS_TIMEOUT_MIN", "10"))
+GMAPS_DEPTH = int(os.environ.get("SCRAP_GMAPS_DEPTH", "50"))
+GMAPS_CONCURRENCY = int(os.environ.get("SCRAP_GMAPS_CONCURRENCY", "4"))
+GMAPS_TIMEOUT_MIN = int(os.environ.get("SCRAP_GMAPS_TIMEOUT_MIN", "15"))
