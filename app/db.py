@@ -92,6 +92,11 @@ def _migrate(conn):
         conn.execute("ALTER TABLE jobs_maps ADD COLUMN target INTEGER DEFAULT 0")
     if "trovati" not in cols:
         conn.execute("ALTER TABLE jobs_maps ADD COLUMN trovati INTEGER DEFAULT 0")
+    # Google Maps (gosom) NON consuma crediti: rimuovi eventuali record residui
+    try:
+        conn.execute("DELETE FROM credit_usage WHERE tipo='gmaps'")
+    except Exception:
+        pass
 
 
 def get_conn() -> sqlite3.Connection:
