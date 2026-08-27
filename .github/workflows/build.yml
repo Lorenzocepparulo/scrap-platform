@@ -36,8 +36,9 @@ jobs:
 
       - name: Make package public (pull senza credenziali dal VPS)
         run: |
-          curl -s -X PUT \
+          curl -sS --fail -X PUT \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/user/packages/container/scrap-platform/visibility" \
             -d '{"visibility":"public"}'
+          echo "VISIBILITA OK"
