@@ -161,8 +161,21 @@ curl -X POST "https://developers.hostinger.com/api/vps/v1/virtual-machines/17087
   -d '{"project_name":"scrap-platform","content":"https://github.com/Lorenzocepparulo/scrap-platform","environment":"SCRAP_PASSWORD=...\nSCRAP_SESSION_SECRET=..."}'
 ```
 
-### ⚠️ Nota portali (Sezione A)
-Idealista e Immobiliare.it proteggono con DataDome/Cloudflare: le richieste HTTP dirette (anche con browser headless) ricevono 403 dall'IP del VPS. Senza gateway anti-bot i monitor girano, salvano lo stato in SQLite e l'errore è **visibile nel Log della dashboard** (come da requisito). Per sbloccare lo scraping reale: configurare `SCRAP_ANTIBOT_URL` + `SCRAP_ANTIBOT_KEY` (es. ZenRows, come suggerisce il repo originale) oppure `SCRAP_PROXY` con proxy residenziali.
+### ⚠️ Nota portali (Sezione A) — come sbloccarli
+Idealista e Immobiliare.it proteggono con DataDome: bloccano (403/challenge JS) TUTTE le richieste da IP datacenter — requests, browser headless, browser headful con Xvfb, curl_cffi con fingerprint Chrome (tutti testati). I monitor girano, salvano in SQLite e l'errore è **visibile nel Log della dashboard** (come da requisito).
+
+Per sbloccare lo scraping reale serve UNA di queste due (il codice è già pronto, basta l'env):
+
+**Opzione A — Gateway anti-bot (consigliata, gratis per iniziare):**
+1. Registrati su https://app.zenrows.com/register (2 min, piano free = 1000 crediti/mese, sufficienti per 1-2 monitoraggi al giorno)
+2. Copia la **API key** dal dashboard
+3. Metti nel deploy/compose:
+   - `SCRAP_ANTIBOT_URL=https://api.zenrows.com/v1/`
+   - `SCRAP_ANTIBOT_KEY=<la tua chiave>`
+4. Il fetch dei portali passa dal gateway (js_render + premium_proxy già abilitati nel codice)
+
+**Opzione B — Proxy residenziale:**
+- `SCRAP_PROXY=http://user:pass@host:port` (un proxy residenziale/datacenter non bloccato da DataDome)
 
 ### ⚠️ Nota Google Sheets
 Il sync su Sheets richiede solo `MATON_API_KEY` (connessione google-sheets già attiva su Maton). Senza la chiave, i monitor funzionano (dati in SQLite + dashboard) e l'errore è visibile nel Log.
