@@ -36,8 +36,11 @@ MAX_ANNUNCI = int(os.environ.get("SCRAP_MAX_ANNUNCI", "60"))
 DASHBOARD_PASSWORD = os.environ.get("SCRAP_PASSWORD", "solovera-scrap-2026")
 SESSION_SECRET = os.environ.get("SCRAP_SESSION_SECRET", "cambiami-sessione")
 
-# Google Sheets (service account)
-# GOOGLE_SERVICE_ACCOUNT_JSON: contenuto JSON del service account (oppure path al file)
+# Google Sheets via Maton (nessun service account necessario)
+MATON_API_KEY = os.environ.get("MATON_API_KEY", "").strip()
+SHEET_SHARE_EMAIL = os.environ.get("SCRAP_SHEET_SHARE_EMAIL", "").strip() or None
+
+# Fallback legacy: service account (solo se un giorno servisse senza Maton)
 _sa_raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
 GOOGLE_SERVICE_ACCOUNT = None
 if _sa_raw:
@@ -48,7 +51,6 @@ if _sa_raw:
             GOOGLE_SERVICE_ACCOUNT = json.loads(Path(_sa_raw).read_text())
         except Exception:
             GOOGLE_SERVICE_ACCOUNT = None
-SHEET_SHARE_EMAIL = os.environ.get("SCRAP_SHEET_SHARE_EMAIL", "").strip() or None
 
 # Google Maps (gosom)
 GMAPS_BINARY = os.environ.get("SCRAP_GMAPS_BINARY", "/usr/local/bin/gm_scraper")
