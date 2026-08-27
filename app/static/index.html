@@ -33,10 +33,9 @@
 <div class="max-w-7xl mx-auto px-4 py-6">
   <!-- TABS -->
   <div class="flex gap-6 border-b border-gray-200 mb-6 text-sm text-gray-500">
-    <button class="tab-active pb-3" data-tab="portali" onclick="switchTab('portali')">🏠 Portali immobiliari</button>
+    <button class="tab-active pb-3" data-tab="portali" onclick="switchTab('portali')">🏠 Immobiliare.it</button>
     <button class="pb-3" data-tab="maps" onclick="switchTab('maps')">📍 Google Maps</button>
     <button class="pb-3" data-tab="jobs" onclick="switchTab('jobs')">⚙️ Job attivi</button>
-    <button class="pb-3" data-tab="logs" onclick="switchTab('logs')">📋 Log</button>
   </div>
 
   <!-- ================= SEZIONE A: PORTALI ================= -->
@@ -51,12 +50,8 @@
             <input id="m-nome" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="es. Case Milano centro">
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">Portale</label>
-            <select id="m-portale" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></select>
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">URL ricerca già filtrata (metodo primario)</label>
-            <input id="m-url" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="https://www.idealista.it/compravendita-case/milano/...">
+            <label class="block text-xs font-medium text-gray-600 mb-1">URL ricerca già filtrata</label>
+            <input id="m-url" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="https://www.immobiliare.it/vendita-case/milano/">
           </div>
           <div>
             <label class="block text-xs font-medium text-gray-600 mb-1">Quante pagine vuoi?</label>
@@ -189,11 +184,6 @@ function buildCheckboxes(containerId, fields, checkedAll=true){
 buildCheckboxes('m-campi', CAMPI_PORTALI);
 // campi fissi: output sempre Categoria, Indirizzo, Telefono, Sito web
 
-// ---- portali ----
-api('/api/portali').then(list=>{
-  document.getElementById('m-portale').innerHTML = list.map(p=>`<option value="${p.id}">${esc(p.nome)}</option>`).join('');
-}).catch(()=>{});
-
 // ---- monitor ----
 let monPollTimer = null;
 function startMonitorsPolling(){
@@ -243,7 +233,7 @@ function monitorCard(m, jobView){
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center gap-3">
       <div class="flex-1 min-w-[200px]">
         <div class="font-semibold text-gray-900 text-sm">${esc(m.nome)} <span class="text-xs text-gray-400">#${m.id}</span></div>
-        <div class="text-xs text-gray-500">${esc(m.portale)} · ogni ${m.frequenza_ore}h · <span class="capitalize">${esc(m.stato)}</span></div>
+        <div class="text-xs text-gray-500">Immobiliare.it · ogni ${m.frequenza_ore}h · <span class="capitalize">${esc(m.stato)}</span></div>
         <div class="text-xs text-gray-400 truncate max-w-md">${esc(m.url_ricerca)}</div>
       </div>
       <div class="text-xs text-gray-500">Prossima run: <b>${m.prossima_esecuzione ? esc(m.prossima_esecuzione) : '—'}</b></div>
@@ -255,7 +245,7 @@ function monitorCard(m, jobView){
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div class="flex-1 min-w-[200px]">
           <div class="font-semibold text-gray-900">${esc(m.nome)} <span class="text-xs text-gray-400">#${m.id}</span></div>
-          <div class="text-xs text-gray-500 mt-0.5">Portale: <b class="capitalize">${esc(m.portale)}</b> · Frequenza: ogni ${m.frequenza_ore}h · ${stato}</div>
+          <div class="text-xs text-gray-500 mt-0.5">Immobiliare.it · Frequenza: ogni ${m.frequenza_ore}h · ${stato}</div>
           <div class="text-xs text-gray-400 truncate mt-1 max-w-lg">${esc(m.url_ricerca)}</div>
         </div>
         <div class="text-right text-xs text-gray-500 space-y-0.5">
@@ -273,7 +263,7 @@ function createMonitor(){
   const campi = [...document.querySelectorAll('#m-campi input:checked')].map(i=>i.value);
   api('/api/monitors', {method:'POST', body: JSON.stringify({
     nome: document.getElementById('m-nome').value,
-    portale: document.getElementById('m-portale').value,
+    portale: 'immobiliare',
     url_ricerca: document.getElementById('m-url').value,
     frequenza_ore: parseFloat(document.getElementById('m-freq').value) || 24,
     max_pages: parseInt(document.getElementById('m-pages').value) || 10,
