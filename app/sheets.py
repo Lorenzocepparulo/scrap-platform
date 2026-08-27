@@ -29,7 +29,7 @@ def _create_spreadsheet(title: str) -> tuple[str, str]:
         f"{BASE}/google-sheets/v4/spreadsheets",
         headers=_headers(),
         json={"properties": {"title": title}},
-        timeout=30,
+        timeout=120,
     )
     r.raise_for_status()
     data = r.json()
@@ -43,7 +43,7 @@ def _batch_update(sid: str, requests_list: list):
         f"{BASE}/google-sheets/v4/spreadsheets/{sid}:batchUpdate",
         headers=_headers(),
         json={"requests": requests_list},
-        timeout=30,
+        timeout=120,
     )
     r.raise_for_status()
     return r.json()
@@ -80,7 +80,7 @@ def _ensure_sheet(monitor: dict):
                 f"{BASE}/google-drive/drive/v3/files/{sid}/permissions",
                 headers=_headers(),
                 json={"role": "writer", "type": "user", "emailAddress": config.SHEET_SHARE_EMAIL},
-                timeout=30,
+                timeout=120,
             )
         except Exception:
             pass
@@ -97,7 +97,7 @@ def _update_values(sid: str, sheet: str, values: list):
         f"{BASE}/google-sheets/v4/spreadsheets/{sid}/values/{quote(rng)}?valueInputOption=USER_ENTERED",
         headers=_headers(),
         json={"range": rng, "majorDimension": "ROWS", "values": values},
-        timeout=30,
+        timeout=120,
     )
     r.raise_for_status()
 
@@ -110,7 +110,7 @@ def _clear_sheet(sid: str, sheet: str):
             f"{BASE}/google-sheets/v4/spreadsheets/{sid}/values/{quote(rng)}:clear",
             headers=_headers(),
             json={},
-            timeout=30,
+            timeout=120,
         )
     except Exception:
         pass
@@ -125,7 +125,7 @@ def _append_values(sid: str, sheet: str, values: list):
         f"{BASE}/google-sheets/v4/spreadsheets/{sid}/values/{quote(rng)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS",
         headers=_headers(),
         json={"range": rng, "majorDimension": "ROWS", "values": values},
-        timeout=30,
+        timeout=120,
     )
     r.raise_for_status()
 
