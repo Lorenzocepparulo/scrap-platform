@@ -49,12 +49,31 @@ def _fetch_with_browser(url: str, timeout: int = 60) -> str:
 
     proxy = {"server": config.PROXY_URL} if config.PROXY_URL else None
     headless = not (os.environ.get("DISPLAY") or "")
+    html = ""
     with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=headless,
-            args=["--no-sandbox", "--disable-blink-features=AutomationControlled", "--disable-dev-shm-usage"],
-            proxy=proxy,
-        )
+        browser = None
+        try:
+            # timeout sul launch: se Xvfb non risponde, fallisce subito invece di pendere
+            browser = p.chromium.launch(
+                headless=headless,
+                args=["--no-sandbox", "--disable-blink-features=AutomationControlled", "--disable-dev-shm-usage"],
+                proxy=proxy,
+                timeout=25000,
+            )
+        except Exception as e:
+            if not headless:
+                # display non disponibile: ripiega su headless
+                try:
+                    browser = p.chromium.launch(
+                        headless=True,
+                        args=["--no-sandbox", "--disable-blink-features=AutomationControlled", "--disable-dev-shm-usage"],
+                        proxy=proxy,
+                        timeout=25000,
+                    )
+                except Exception as e2:
+                    raise RuntimeError(f"Impossibile avviare Chromium: {e2}")
+            else:
+                raise RuntimeError(f"Impossibile avviare Chromium: {e}")
         ctx = browser.new_context(
             user_agent=random_user_agent(),
             locale="it-IT",
@@ -73,7 +92,10 @@ def _fetch_with_browser(url: str, timeout: int = 60) -> str:
                     return html
             html = page.content()
         finally:
-            browser.close()
+            try:
+                browser.close()
+            except Exception:
+                pass
     if not html or len(html) < 500:
         raise RuntimeError("Pagina vuota dal fallback browser")
     return html
