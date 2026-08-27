@@ -34,6 +34,9 @@ DEFAULT_FIELDS = ["categoria", "indirizzo", "telefono", "sito_web"]
 # Target lead scelto dall'utente -> depth di scansione gosom
 TARGET_TO_DEPTH = {50: 8, 300: 50, 1000: 150, 10000: 400}
 
+# Tutti i campi che gosom può scrivere nel CSV (usati in modalità debug/test)
+ALL_FIELDS = ["nome", "categoria", "indirizzo", "telefono", "sito_web", "email", "rating", "recensioni", "orari", "coordinate"]
+
 
 def _fields_to_csv_cols(campi: list[str]) -> list[str]:
     if not campi:
@@ -53,13 +56,13 @@ def _count_rows(csv_path: str) -> int:
         return 0
 
 
-def run_maps_job(job_id: int, query: str, campi: list[str], target: int = 0):
+def run_maps_job(job_id: int, query: str, campi: list[str], target: int = 0, keep_all: bool = False):
     """Esegue gosom in background e produce l'xlsx. Da lanciare in un thread.
-    I campi sono IGNORATI: l'output usa sempre DEFAULT_FIELDS (fisso).
-    target = lead richiesti (0 = nessun limite, usa il depth di default)."""
+    Di default l'output è FISSO (DEFAULT_FIELDS); con keep_all=True (solo debug/test)
+    mantiene TUTTE le colonne che gosom produce per capire cosa si compila davvero."""
     update_maps_job(job_id, stato="in_corso", trovati=0)
     filename = None
-    campi = DEFAULT_FIELDS  # output fisso indipendentemente dalla selezione
+    campi = ALL_FIELDS if keep_all else DEFAULT_FIELDS  # output fisso oppure tutti i campi (debug)
     try:
         if not os.path.exists(config.GMAPS_BINARY):
             raise RuntimeError(f"Binario gosom non trovato: {config.GMAPS_BINARY}")
