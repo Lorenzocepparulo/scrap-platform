@@ -60,6 +60,12 @@ CREATE TABLE IF NOT EXISTS log (
     monitor_id INTEGER,
     messaggio TEXT
 );
+CREATE TABLE IF NOT EXISTS credit_usage (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipo TEXT NOT NULL,                 -- 'zenrows' | 'gmaps'
+    quantita INTEGER DEFAULT 1,
+    creato_il TEXT DEFAULT (datetime('now'))
+);
 CREATE TABLE IF NOT EXISTS jobs_maps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     query TEXT NOT NULL,
@@ -259,3 +265,29 @@ def get_maps_job(job_id):
 def list_maps_jobs(limit=50):
     with db() as conn:
         return [dict(r) for r in conn.execute("SELECT * FROM jobs_maps ORDER BY id DESC LIMIT ?", (limit,)).fetchall()]
+
+
+def add_credit_usage(tipo: str, quantita: int = 1):
+    """Registra un consumo di credito (zenrows/gmaps)."""
+    try:
+        with db() as conn:
+            conn.execute("INSERT INTO credit_usage (tipo, quantita) VALUES (?,?)", (tipo, quantita))
+    except Exception:
+        pass
+
+
+def get_credits_monthly(limite: int) -> dict:
+    """Crediti usati questo mese (per tipo e totale) + rimasti."""
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT tipo, SUM(quantita) AS tot FROM credit_usage "
+            "WHERE creato_il >= strftime('%Y-%m-01','now') GROUP BY tipo"
+        ).fetchall()
+        by_type = {r["tipo"]: r["tot"] for r in rows}
+    usati = sum(by_type.values())
+    return {
+        "usati": usati,
+        "limite": limite,
+        "rimasti": max(0, limite - usati),
+        "per_tipo": by_type,
+    }

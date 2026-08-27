@@ -112,6 +112,12 @@ def _fetch_via_antibot(url: str, timeout: int = 60) -> str:
     resp = requests.get(target, timeout=max(timeout, 150))
     if resp.status_code != 200:
         raise RuntimeError(f"Gateway anti-bot: HTTP {resp.status_code}")
+    # traccia il consumo crediti (1 richiesta ZenRows = 1 credito)
+    try:
+        from .db import add_credit_usage
+        add_credit_usage("zenrows", 1)
+    except Exception:
+        pass
     return resp.text
 
 

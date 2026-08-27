@@ -52,6 +52,9 @@ if _sa_raw:
         except Exception:
             GOOGLE_SERVICE_ACCOUNT = None
 
+# Crediti mensili (tetto configurabile; ZenRows free = 1000/mese)
+CREDIT_LIMIT_MONTHLY = int(os.environ.get("SCRAP_CREDIT_LIMIT_MONTHLY", "1000"))
+
 # Google Maps (gosom)
 GMAPS_BINARY = os.environ.get("SCRAP_GMAPS_BINARY", "/usr/local/bin/gm_scraper")
 GMAPS_DEPTH = int(os.environ.get("SCRAP_GMAPS_DEPTH", "50"))

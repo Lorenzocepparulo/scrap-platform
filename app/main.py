@@ -220,6 +220,13 @@ def logs(request: Request, limit: int = 100):
 
 
 # ---------- Debug (temporaneo, per verificare il fetch dei portali) ----------
+@app.get("/api/credits")
+def credits(request: Request):
+    """Crediti gratuiti rimasti questo mese (tetto mensile configurabile)."""
+    _require_auth(request)
+    return db.get_credits_monthly(config.CREDIT_LIMIT_MONTHLY)
+
+
 @app.get("/api/debug/fetch")
 def debug_fetch(url: str, request: Request):
     """Endpoint temporaneo: esegue fetch_html su un URL e mostra cosa restituisce."""

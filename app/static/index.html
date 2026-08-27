@@ -23,6 +23,7 @@
       </div>
     </div>
     <div class="flex items-center gap-4">
+      <span id="creditsBadge" class="text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-3 py-1 cursor-pointer" title="Crediti gratuiti rimasti questo mese" onclick="loadCredits()">🎫 …</span>
       <span id="healthDot" class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
       <button onclick="logout()" class="text-sm text-gray-600 hover:text-red-600">Esci</button>
     </div>
@@ -201,6 +202,7 @@ function startMonitorsPolling(){
     api('/api/monitors').then(list=>{
       renderMonitors(list);
       if(!list.some(m=>m.progresso)){ clearInterval(monPollTimer); monPollTimer=null; }
+      loadCredits();
     }).catch(()=>{ clearInterval(monPollTimer); monPollTimer=null; });
   }, 4000);
 }
@@ -276,10 +278,10 @@ function createMonitor(){
     frequenza_ore: parseFloat(document.getElementById('m-freq').value) || 24,
     max_pages: parseInt(document.getElementById('m-pages').value) || 10,
     campi
-  })}).then(()=>{ loadMonitors(); document.getElementById('m-nome').value=''; document.getElementById('m-url').value=''; })
+  })}).then(()=>{ loadMonitors(); loadCredits(); document.getElementById('m-nome').value=''; document.getElementById('m-url').value=''; })
    .catch(e=>alert('Errore: '+e.message));
 }
-function runNow(id){ api(`/api/monitors/${id}/run`,{method:'POST'}).then(()=>{loadMonitors(); startMonitorsPolling();}); }
+function runNow(id){ api(`/api/monitors/${id}/run`,{method:'POST'}).then(()=>{loadMonitors(); startMonitorsPolling(); loadCredits();}); }
 function pauseMonitor(id){ api(`/api/monitors/${id}/pause`,{method:'POST'}).then(loadMonitors); }
 function resumeMonitor(id){ api(`/api/monitors/${id}/resume`,{method:'POST'}).then(loadMonitors); }
 function delMonitor(id){ if(confirm('Eliminare definitivamente questo monitoraggio e i suoi dati?')) api(`/api/monitors/${id}`,{method:'DELETE'}).then(loadMonitors); }
@@ -311,12 +313,25 @@ function showDetail(id){
 }
 function closeDetail(){ document.getElementById('monitor-detail').classList.add('hidden'); }
 
+// ---- crediti ----
+function loadCredits(){
+  api('/api/credits').then(c=>{
+    const el = document.getElementById('creditsBadge');
+    if(!el) return;
+    const pct = c.limite ? Math.round(c.usati/c.limite*100) : 0;
+    const color = c.rimasti <= 50 ? 'bg-red-50 text-red-700 border-red-200' : (c.rimasti <= 200 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200');
+    el.className = `text-xs font-semibold rounded-full px-3 py-1 cursor-pointer border ${color}`;
+    el.textContent = `🎫 ${c.rimasti}/${c.limite} crediti`;
+    el.title = `Crediti mese: usati ${c.usati} · rimasti ${c.rimasti}${c.per_tipo && c.per_tipo.zenrows ? ` · ZenRows ${c.per_tipo.zenrows}` : ''}${c.per_tipo && c.per_tipo.gmaps ? ` · Maps ${c.per_tipo.gmaps}` : ''}`;
+  }).catch(()=>{});
+}
+
 // ---- maps ----
 let mapsPollTimer = null;
 function launchMaps(){
   const target = parseInt(document.getElementById('g-target').value) || 0;
   api('/api/maps', {method:'POST', body: JSON.stringify({query: document.getElementById('g-query').value, target})})
-    .then(()=>{ loadMapsJobs(); startMapsPolling(); })
+    .then(()=>{ loadMapsJobs(); startMapsPolling(); loadCredits(); })
     .catch(e=>alert('Errore: '+e.message));
 }
 function mapsProgress(j){
@@ -336,6 +351,7 @@ function startMapsPolling(){
     api('/api/maps/jobs').then(jobs=>{
       renderMapsJobs(jobs);
       if(!jobs.some(j=>j.stato==='in_corso'||j.stato==='in_coda')){ clearInterval(mapsPollTimer); mapsPollTimer=null; }
+      loadCredits();
     }).catch(()=>{ clearInterval(mapsPollTimer); mapsPollTimer=null; });
   }, 4000);
 }
@@ -376,7 +392,7 @@ function loadLogs(){
 }
 
 // init
-loadMonitors(); loadLogs(); loadMapsJobs();
+loadMonitors(); loadLogs(); loadMapsJobs(); loadCredits();
 setInterval(()=>fetch('/api/health').then(r=>{document.getElementById('healthDot').className='w-2.5 h-2.5 rounded-full '+(r.ok?'bg-green-500':'bg-red-500');}).catch(()=>{}), 30000);
 </script>
 </body>
