@@ -37,15 +37,24 @@ def make_session() -> requests.Session:
 
 
 def _fetch_with_browser(url: str, timeout: int = 60) -> str:
-    """Fallback: browser headless Chromium (supera molti blocchi JS/DataDome)."""
+    """Fallback: browser Chromium headful (schermo virtuale via DISPLAY/Xvfb).
+
+    DataDome/Cloudflare bloccano i browser headless e le richieste HTTP dirette,
+    ma un browser headful vero risolve la challenge JS e lascia passare.
+    """
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
         raise RuntimeError("Playwright non installato — impossibile il fallback browser")
 
     proxy = {"server": config.PROXY_URL} if config.PROXY_URL else None
+    headless = not (os.environ.get("DISPLAY") or "")
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-blink-features=AutomationControlled"], proxy=proxy)
+        browser = p.chromium.launch(
+            headless=headless,
+            args=["--no-sandbox", "--disable-blink-features=AutomationControlled", "--disable-dev-shm-usage"],
+            proxy=proxy,
+        )
         ctx = browser.new_context(
             user_agent=random_user_agent(),
             locale="it-IT",
@@ -54,7 +63,14 @@ def _fetch_with_browser(url: str, timeout: int = 60) -> str:
         page = ctx.new_page()
         try:
             page.goto(url, timeout=timeout * 1000, wait_until="domcontentloaded")
-            page.wait_for_timeout(2500)  # lascia risolvere eventuali challenge JS
+            # aspetta che l'eventuale challenge JS (DataDome) si risolva e la pagina ricarichi
+            for _ in range(12):
+                page.wait_for_timeout(2500)
+                html = page.content()
+                if "item-link" in html or "inmueble" in html or "nd-list__item" in html or "it-card" in html:
+                    return html
+                if "cmsg" not in html and "datadome" not in html.lower():
+                    return html
             html = page.content()
         finally:
             browser.close()

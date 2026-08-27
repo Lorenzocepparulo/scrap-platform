@@ -2,9 +2,9 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Dipendenze di sistema per Chromium (richieste da gosom/playwright)
+# Dipendenze di sistema per Chromium (richieste da gosom/playwright) + Xvfb per browser headful (anti DataDome)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates golang-go \
+    curl ca-certificates golang-go xvfb \
     libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
     libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
     libgbm1 libasound2 libpango-1.0-0 libcairo2 libatspi2.0-0 \
@@ -30,6 +30,7 @@ RUN mkdir -p /data/downloads
 
 ENV SCRAP_DATA_DIR=/data
 ENV PYTHONUNBUFFERED=1
+ENV DISPLAY=:99
 
-EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Avvia Xvfb (schermo virtuale per browser headful) e poi l'app
+CMD ["sh", "-c", "Xvfb :99 -screen 0 1280x1024x24 -ac & sleep 2 && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
