@@ -294,8 +294,15 @@ function loadMapsJobs(){
         </div>
         ${stati[j.stato]||j.stato}
         ${j.stato==='completato' && j.filename ? `<a href="/api/download/${encodeURIComponent(j.filename)}" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3 py-1.5 font-semibold">⬇ Scarica Excel</a>` : ''}
+        <button onclick="deleteMapsJob(${j.id})" class="text-xs bg-red-50 hover:bg-red-100 text-red-700 rounded px-2 py-1" title="Elimina questa ricerca">🗑 Elimina</button>
       </div>`).join('');
   }).catch(()=>{});
+}
+function deleteMapsJob(id){
+  if(!confirm('Eliminare questa ricerca e il relativo file Excel?')) return;
+  api(`/api/maps/jobs/${id}`, {method:'DELETE'})
+    .then(()=>loadMapsJobs())
+    .catch(e=>alert('Errore: '+e.message));
 }
 
 // ---- logs ----

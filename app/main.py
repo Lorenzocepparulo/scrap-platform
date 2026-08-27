@@ -180,6 +180,26 @@ def maps_jobs(request: Request):
     return db.list_maps_jobs()
 
 
+@app.delete("/api/maps/jobs/{job_id}")
+def delete_maps_job(job_id: int, request: Request):
+    """Elimina una ricerca Maps e il relativo file Excel (per pulire la sezione)."""
+    _require_auth(request)
+    job = db.get_maps_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job non trovato")
+    if job.get("filename"):
+        path = DOWNLOADS_DIR / os.path.basename(job["filename"])
+        if path.exists():
+            try:
+                path.unlink()
+            except Exception:
+                pass
+    with db.db() as conn:
+        conn.execute("DELETE FROM jobs_maps WHERE id=?", (job_id,))
+    db.add_log("info", f"Job Maps {job_id} eliminato ({job.get('query', '')[:60]})")
+    return {"ok": True}
+
+
 @app.get("/api/download/{filename}")
 def download(filename: str, request: Request):
     _require_auth(request)
