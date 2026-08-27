@@ -108,7 +108,8 @@ def _fetch_via_antibot(url: str, timeout: int = 60) -> str:
         raise RuntimeError("Gateway anti-bot non configurato (SCRAP_ANTIBOT_URL/SCRAP_ANTIBOT_KEY)")
     from urllib.parse import urlencode
     target = f"{config.ANTIBOT_URL}?{urlencode({'url': url, 'apikey': config.ANTIBOT_KEY, 'js_render': 'true', 'premium_proxy': 'true'})}"
-    resp = requests.get(target, timeout=timeout)
+    # ZenRows con js_render può richiedere 60-120s: timeout ampio
+    resp = requests.get(target, timeout=max(timeout, 150))
     if resp.status_code != 200:
         raise RuntimeError(f"Gateway anti-bot: HTTP {resp.status_code}")
     return resp.text
@@ -119,7 +120,7 @@ def fetch_html(url: str, timeout: int = 30) -> str:
     last_err = None
     # Se c'è un gateway anti-bot configurato, usalo direttamente (più affidabile)
     if config.ANTIBOT_URL and config.ANTIBOT_KEY:
-        return _fetch_via_antibot(url, timeout=timeout)
+        return _fetch_via_antibot(url, timeout=max(timeout, 150))
     for attempt in range(2):
         s = make_session()
         try:
