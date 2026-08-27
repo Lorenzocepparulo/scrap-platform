@@ -1,5 +1,6 @@
 services:
   scrap:
+    build: .
     image: ghcr.io/lorenzocepparulo/scrap-platform:latest
     container_name: scrap-platform
     restart: unless-stopped
