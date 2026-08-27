@@ -4,6 +4,8 @@ services:
     image: ghcr.io/lorenzocepparulo/scrap-platform:latest
     container_name: scrap-platform
     restart: unless-stopped
+    ports:
+      - "18080:8000"
     volumes:
       - scrap-data:/data
     environment:
