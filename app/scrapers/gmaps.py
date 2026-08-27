@@ -71,8 +71,6 @@ def run_maps_job(job_id: int, query: str, campi: list[str], target: int = 0, kee
     update_maps_job(job_id, stato="in_corso", trovati=0)
     filename = None
     campi = ALL_FIELDS if keep_all else DEFAULT_FIELDS  # output fisso oppure tutti i campi (debug)
-    from ..db import add_credit_usage
-    add_credit_usage("gmaps", 1)  # ogni job Maps = 1 credito
     try:
         if not os.path.exists(config.GMAPS_BINARY):
             raise RuntimeError(f"Binario gosom non trovato: {config.GMAPS_BINARY}")
