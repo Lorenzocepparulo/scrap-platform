@@ -167,8 +167,9 @@ async def launch_maps(request: Request):
     if not query:
         raise HTTPException(status_code=400, detail="Query mancante")
     campi = body.get("campi") or []
-    job_id = db.create_maps_job(query, campi)
-    t = threading.Thread(target=gmaps.run_maps_job, args=(job_id, query, campi), daemon=True)
+    target = int(body.get("target") or 0)
+    job_id = db.create_maps_job(query, campi, target=target)
+    t = threading.Thread(target=gmaps.run_maps_job, args=(job_id, query, campi, target), daemon=True)
     t.start()
     db.add_log("info", f"Job Maps avviato: {query}")
     return db.get_maps_job(job_id)

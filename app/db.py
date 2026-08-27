@@ -64,10 +64,21 @@ CREATE TABLE IF NOT EXISTS jobs_maps (
     campi TEXT DEFAULT '{}',
     stato TEXT DEFAULT 'in_coda',       -- in_coda | in_corso | completato | errore
     filename TEXT,
+    target INTEGER DEFAULT 0,           -- lead richiesti (0 = nessun limite)
+    trovati INTEGER DEFAULT 0,          -- risultati trovati finora (progresso live)
     creato_il TEXT DEFAULT (datetime('now')),
     completato_il TEXT
 );
 """
+
+
+def _migrate(conn):
+    """Aggiunge colonne mancanti su DB esistenti (migrazione leggera)."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(jobs_maps)").fetchall()}
+    if "target" not in cols:
+        conn.execute("ALTER TABLE jobs_maps ADD COLUMN target INTEGER DEFAULT 0")
+    if "trovati" not in cols:
+        conn.execute("ALTER TABLE jobs_maps ADD COLUMN trovati INTEGER DEFAULT 0")
 
 
 def get_conn() -> sqlite3.Connection:
@@ -80,6 +91,7 @@ def get_conn() -> sqlite3.Connection:
 def init_db():
     with get_conn() as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
 
 
 @contextmanager
@@ -211,14 +223,14 @@ def list_log(limit=100):
 
 
 # ---------- JOBS MAPS ----------
-def create_maps_job(query, campi):
+def create_maps_job(query, campi, target=0):
     with db() as conn:
-        cur = conn.execute("INSERT INTO jobs_maps (query, campi) VALUES (?,?)", (query, json.dumps(campi)))
+        cur = conn.execute("INSERT INTO jobs_maps (query, campi, target) VALUES (?,?,?)", (query, json.dumps(campi), target))
         return cur.lastrowid
 
 
 def update_maps_job(job_id, **fields):
-    allowed = {"stato", "filename", "completato_il"}
+    allowed = {"stato", "filename", "completato_il", "trovati", "target"}
     sets, vals = [], []
     for k, v in fields.items():
         if k in allowed:

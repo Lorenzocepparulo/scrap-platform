@@ -101,6 +101,15 @@
             <label class="block text-xs font-medium text-gray-600 mb-1">Query (libera + area)</label>
             <input id="g-query" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="es. agenzie immobiliari Lombardia">
           </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Quanti lead vuoi?</label>
+            <select id="g-target" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+              <option value="50">Fino a 50 lead</option>
+              <option value="300" selected>Fino a 300 lead</option>
+              <option value="1000">Fino a 1000 lead</option>
+              <option value="10000">Fino a 10.000 lead</option>
+            </select>
+          </div>
           <div class="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
             📄 Il file Excel includerà sempre: <b>Categoria · Indirizzo · Telefono · Sito web</b>
           </div>
@@ -270,27 +279,49 @@ function showDetail(id){
 function closeDetail(){ document.getElementById('monitor-detail').classList.add('hidden'); }
 
 // ---- maps ----
+let mapsPollTimer = null;
 function launchMaps(){
-  api('/api/maps', {method:'POST', body: JSON.stringify({query: document.getElementById('g-query').value})})
-    .then(()=>{ alert('Scraping avviato. Il file Excel sarà pronto in qualche minuto qui sotto.'); loadMapsJobs(); })
+  const target = parseInt(document.getElementById('g-target').value) || 0;
+  api('/api/maps', {method:'POST', body: JSON.stringify({query: document.getElementById('g-query').value, target})})
+    .then(()=>{ loadMapsJobs(); startMapsPolling(); })
     .catch(e=>alert('Errore: '+e.message));
 }
-function loadMapsJobs(){
-  api('/api/maps/jobs').then(jobs=>{
-    const el = document.getElementById('maps-jobs');
-    if(!jobs.length){ el.innerHTML='<p class="text-gray-500 text-sm">Nessun job eseguito.</p>'; return; }
-    const stati = {in_coda:'<span class="badge bg-gray-100 text-gray-600">in coda</span>', in_corso:'<span class="badge bg-blue-100 text-blue-700">in corso…</span>', completato:'<span class="badge bg-green-100 text-green-700">completato</span>', errore:'<span class="badge bg-red-100 text-red-700">errore</span>'};
+function mapsProgress(j){
+  const n = j.trovati||0;
+  const pct = j.target ? Math.min(100, Math.round(n/j.target*100)) : null;
+  const bar = pct===null
+    ? '<div class="h-2 bg-gray-200 rounded-full overflow-hidden"><div class="h-full w-full bg-blue-500 rounded-full animate-pulse"></div></div>'
+    : `<div class="h-2 bg-gray-200 rounded-full overflow-hidden"><div class="h-full bg-emerald-500 rounded-full transition-all duration-700" style="width:${pct}%"></div></div>`;
+  return `<div class="w-full">
+    <div class="flex justify-between text-xs text-gray-500 mb-1"><span>⏳ Ricerca in corso…</span><span>${n}${j.target ? ' / '+j.target : ''} risultati</span></div>
+    ${bar}
+  </div>`;
+}
+function startMapsPolling(){
+  if(mapsPollTimer) return;
+  mapsPollTimer = setInterval(()=>{
+    api('/api/maps/jobs').then(jobs=>{
+      renderMapsJobs(jobs);
+      if(!jobs.some(j=>j.stato==='in_corso'||j.stato==='in_coda')){ clearInterval(mapsPollTimer); mapsPollTimer=null; }
+    }).catch(()=>{ clearInterval(mapsPollTimer); mapsPollTimer=null; });
+  }, 4000);
+}
+function loadMapsJobs(){ api('/api/maps/jobs').then(jobs=>{ renderMapsJobs(jobs); if(jobs.some(j=>j.stato==='in_corso'||j.stato==='in_coda')) startMapsPolling(); }).catch(()=>{}); }
+function renderMapsJobs(jobs){
+  const el = document.getElementById('maps-jobs');
+  if(!jobs.length){ el.innerHTML='<p class="text-gray-500 text-sm">Nessun job eseguito.</p>'; return; }
+  const stati = {in_coda:'<span class="badge bg-gray-100 text-gray-600">in coda</span>', in_corso:'<span class="badge bg-blue-100 text-blue-700">in corso…</span>', completato:'<span class="badge bg-green-100 text-green-700">completato</span>', errore:'<span class="badge bg-red-100 text-red-700">errore</span>'};
     el.innerHTML = jobs.map(j=>`
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center gap-3">
         <div class="flex-1 min-w-[200px]">
           <div class="font-semibold text-gray-900 text-sm">${esc(j.query)}</div>
-          <div class="text-xs text-gray-500">Creato: ${esc(j.creato_il)} ${j.completato_il ? '· Completato: '+esc(j.completato_il) : ''}</div>
+          <div class="text-xs text-gray-500">Creato: ${esc(j.creato_il)} ${j.target ? '· Obiettivo: '+j.target+' lead' : ''} ${j.completato_il ? '· Completato: '+esc(j.completato_il) : ''}</div>
+          ${j.stato==='in_corso' ? mapsProgress(j) : ''}
         </div>
         ${stati[j.stato]||j.stato}
         ${j.stato==='completato' && j.filename ? `<a href="/api/download/${encodeURIComponent(j.filename)}" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3 py-1.5 font-semibold">⬇ Scarica Excel</a>` : ''}
         <button onclick="deleteMapsJob(${j.id})" class="text-xs bg-red-50 hover:bg-red-100 text-red-700 rounded px-2 py-1" title="Elimina questa ricerca">🗑 Elimina</button>
       </div>`).join('');
-  }).catch(()=>{});
 }
 function deleteMapsJob(id){
   if(!confirm('Eliminare questa ricerca e il relativo file Excel?')) return;

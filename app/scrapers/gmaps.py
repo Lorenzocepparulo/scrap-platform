@@ -31,6 +31,9 @@ FIELD_MAP = {
 # ⚠️ Output FISSO: tutte le ricerche producono sempre le stesse colonne (richiesta Lorenzo)
 DEFAULT_FIELDS = ["categoria", "indirizzo", "telefono", "sito_web"]
 
+# Target lead scelto dall'utente -> depth di scansione gosom
+TARGET_TO_DEPTH = {50: 8, 300: 50, 1000: 150, 10000: 400}
+
 
 def _fields_to_csv_cols(campi: list[str]) -> list[str]:
     if not campi:
@@ -39,16 +42,29 @@ def _fields_to_csv_cols(campi: list[str]) -> list[str]:
     return cols or ["name"]
 
 
-def run_maps_job(job_id: int, query: str, campi: list[str]):
+def _count_rows(csv_path: str) -> int:
+    """Conta le righe dati (escluso header) di un CSV gosom parziale."""
+    try:
+        if not os.path.exists(csv_path):
+            return 0
+        with open(csv_path, newline="", errors="ignore") as f:
+            return max(0, sum(1 for _ in f) - 1)
+    except Exception:
+        return 0
+
+
+def run_maps_job(job_id: int, query: str, campi: list[str], target: int = 0):
     """Esegue gosom in background e produce l'xlsx. Da lanciare in un thread.
-    I campi sono IGNORATI: l'output usa sempre DEFAULT_FIELDS (fisso)."""
-    update_maps_job(job_id, stato="in_corso")
+    I campi sono IGNORATI: l'output usa sempre DEFAULT_FIELDS (fisso).
+    target = lead richiesti (0 = nessun limite, usa il depth di default)."""
+    update_maps_job(job_id, stato="in_corso", trovati=0)
     filename = None
     campi = DEFAULT_FIELDS  # output fisso indipendentemente dalla selezione
     try:
         if not os.path.exists(config.GMAPS_BINARY):
             raise RuntimeError(f"Binario gosom non trovato: {config.GMAPS_BINARY}")
 
+        depth = TARGET_TO_DEPTH.get(target, config.GMAPS_DEPTH if target <= 0 else min(400, max(8, target // 5)))
         with tempfile.TemporaryDirectory() as tmp:
             queries_file = os.path.join(tmp, "queries.txt")
             results_csv = os.path.join(tmp, "results.csv")
@@ -59,7 +75,7 @@ def run_maps_job(job_id: int, query: str, campi: list[str]):
                 config.GMAPS_BINARY,
                 "-input", queries_file,
                 "-results", results_csv,
-                "-depth", str(config.GMAPS_DEPTH),
+                "-depth", str(depth),
                 "-c", str(config.GMAPS_CONCURRENCY),
                 "-exit-on-inactivity", f"{config.GMAPS_TIMEOUT_MIN}m",
             ]
@@ -68,14 +84,29 @@ def run_maps_job(job_id: int, query: str, campi: list[str]):
             if config.PROXY_URL:
                 cmd += ["-proxies", config.PROXY_URL]
 
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=config.GMAPS_TIMEOUT_MIN * 60 + 120)
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            # monitora il progresso: aggiorna "trovati" ogni 4s finché gosom gira
+            import time
+            deadline = time.time() + config.GMAPS_TIMEOUT_MIN * 60 + 120
+            last = -1
+            while proc.poll() is None:
+                time.sleep(4)
+                n = _count_rows(results_csv)
+                if n != last:
+                    update_maps_job(job_id, trovati=n)
+                    last = n
+                if time.time() > deadline:
+                    proc.kill()
+                    raise RuntimeError("timeout gosom")
+            out, err = proc.communicate()
             if proc.returncode != 0:
-                raise RuntimeError(f"gosom exit {proc.returncode}: {proc.stderr[-600:] or proc.stdout[-600:]}")
+                raise RuntimeError(f"gosom exit {proc.returncode}: {(err or out)[-600:]}")
             if not os.path.exists(results_csv):
                 raise RuntimeError(f"gosom non ha prodotto output. {proc.stderr[-500:]}")
             if os.path.getsize(results_csv) == 0:
                 raise RuntimeError(f"gosom ha prodotto un CSV vuoto. stderr: {proc.stderr[-500:]}")
 
+            update_maps_job(job_id, trovati=_count_rows(results_csv))
             df = pd.read_csv(results_csv, dtype=str)
             # mappa le colonne CSV ai nomi italiani richiesti
             rename = {v: k for k, v in FIELD_MAP.items()}
