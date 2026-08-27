@@ -59,4 +59,5 @@ CREDIT_LIMIT_MONTHLY = int(os.environ.get("SCRAP_CREDIT_LIMIT_MONTHLY", "1000"))
 GMAPS_BINARY = os.environ.get("SCRAP_GMAPS_BINARY", "/usr/local/bin/gm_scraper")
 GMAPS_DEPTH = int(os.environ.get("SCRAP_GMAPS_DEPTH", "50"))
 GMAPS_CONCURRENCY = int(os.environ.get("SCRAP_GMAPS_CONCURRENCY", "4"))
-GMAPS_TIMEOUT_MIN = int(os.environ.get("SCRAP_GMAPS_TIMEOUT_MIN", "15"))
+GMAPS_TIMEOUT_MIN = int(os.environ.get("SCRAP_GMAPS_TIMEOUT_MIN", "45"))
+GMAPS_INACTIVITY_MIN = int(os.environ.get("SCRAP_GMAPS_INACTIVITY_MIN", "3"))  # gosom esce dopo N min senza nuovi risultati

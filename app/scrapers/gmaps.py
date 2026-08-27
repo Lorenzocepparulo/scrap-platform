@@ -88,7 +88,7 @@ def run_maps_job(job_id: int, query: str, campi: list[str], target: int = 0, kee
                 "-results", results_csv,
                 "-depth", str(depth),
                 "-c", str(config.GMAPS_CONCURRENCY),
-                "-exit-on-inactivity", f"{config.GMAPS_TIMEOUT_MIN}m",
+                "-exit-on-inactivity", f"{config.GMAPS_INACTIVITY_MIN}m",
             ]
             if "emails" in [FIELD_MAP.get(c) for c in campi]:
                 cmd.append("-email")
@@ -100,7 +100,8 @@ def run_maps_job(job_id: int, query: str, campi: list[str], target: int = 0, kee
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             # monitora il progresso: aggiorna "trovati" ogni 4s finché gosom gira
             import time
-            deadline = time.time() + config.GMAPS_TIMEOUT_MIN * 60 + 120
+            timeout_sec = max(config.GMAPS_TIMEOUT_MIN * 60 + 120, depth * 20)
+            deadline = time.time() + timeout_sec
             last = -1
             while proc.poll() is None:
                 time.sleep(4)
