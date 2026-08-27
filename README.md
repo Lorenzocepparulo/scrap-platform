@@ -38,7 +38,7 @@ lanciare ricerche e ricevere i dati.
 │ ├─ immobiliare.py │
 │ └─ registry.py    │
 └───────┬───────────┘
-        │ gspread (service account)
+        │ Maton API (google-sheets OAuth)
 ┌───────▼────────────────────────────────────────────────┐
 │ GOOGLE SHEET (fogli: Database, Nuovi, Ribassi,         │
 │ Venduti-Rimossi, Log)                                  │
@@ -112,33 +112,62 @@ uvicorn app.main:app --port 8000
 ## Avvio con Docker (consigliato)
 
 ```bash
-cp .env.example .env   # compila SCRAP_PASSWORD e GOOGLE_SERVICE_ACCOUNT_JSON
+cp .env.example .env   # compila SCRAP_PASSWORD e MATON_API_KEY
 docker compose up -d --build
 ```
 
 L'immagine è già pubblica su GHCR: `ghcr.io/lorenzocepparulo/scrap-platform:latest`
 (build automatica da GitHub Actions su push a `main`).
 
-## Come configurare il service account Google (per Google Sheets)
+## Google Sheets — via Maton (nessun service account)
 
-1. Vai su https://console.cloud.google.com/ → crea un progetto (o usane uno esistente)
-2. **API & Services → Library** → abilita **Google Sheets API**
-3. **API & Services → Credentials → Create credentials → Service account**
-4. Nel service account: **Keys → Add key → JSON** → scarichi il file
-5. Prendi il **contenuto del JSON** e mettilo nella variabile
-   `GOOGLE_SERVICE_ACCOUNT_JSON` del `.env` (tutto su una riga, oppure in base64)
-6. `SCRAP_SHEET_SHARE_EMAIL`: la tua email, così lo spreadsheet creato dal
-   primo run ti viene condiviso automaticamente in modifica
+Il sync usa la **MATON_API_KEY** (la stessa di Gmail/Drive/Stripe): la connessione
+`google-sheets` su Maton è già collegata con l'account `psigewebmarketing@gmail.com`,
+quindi la piattaforma può creare e aggiornare spreadsheet direttamente.
 
-> Senza service account la piattaforma funziona lo stesso (i dati restano in
-> SQLite e sono visibili in dashboard), ma il sync su Google Sheets viene
-> saltato con un errore visibile nel Log.
+- Variabile richiesta: `MATON_API_KEY` (nel `.env` / nel deploy)
+- `SCRAP_SHEET_SHARE_EMAIL` (opzionale): email a cui condividere lo spreadsheet creato dal primo run
+- Il primo run crea lo spreadsheet (fogli: Database, Nuovi, Ribassi, Venduti-Rimossi, Log) e salva il link sul monitor; i run successivi aggiornano lo stesso file.
 
-## Deploy su VPS (Hostinger + Traefik)
+> Fallback legacy (non necessario): `GOOGLE_SERVICE_ACCOUNT_JSON` è ancora supportato nel
+> codice se un giorno servisse, ma il percorso standard è Maton.
 
-Il VPS (`srv1708775.hstgr.cloud`) ha Docker + Traefik con Let's Encrypt. Il
-compose in questo repo espone `scrap.solovera.work` via label Traefik. Per il
-deploy si usa l'API Hostinger:
+## Deploy su VPS (Hostinger + Traefik + Worker Cloudflare) — STATO ATTUALE: LIVE ✅
+
+Il VPS (`srv1708775.hstgr.cloud`, 152.239.114.168) ha Docker + Traefik con Let's Encrypt.
+**Architettura effettiva in produzione** (il token Cloudflare non ha permessi DNS edit, quindi non si può creare un record A diretto):
+
+```
+scrap.solovera.work
+  └─ Cloudflare Worker "scrap-proxy" (custom domain, auto-DNS)
+       └─ fetch → http://srv1708775.hstgr.cloud:18080   (hostname, NON IP: CF blocca i fetch a IP grezzi con errore 1003)
+            └─ Traefik/VPS porta 18080 pubblicata → container scrap-platform:8000
+```
+
+1. **Repo**: `https://github.com/Lorenzocepparulo/scrap-platform` (pubblico, serve per il clone lato Hostinger)
+2. **Build sul VPS**: `POST /api/vps/v1/virtual-machines/1708775/docker` con `content` = URL del repo GitHub (Hostinger clona e fa `docker compose up --build`)
+3. **Worker proxy**: `npx wrangler deploy scrap-proxy-worker.js --name scrap-proxy` + `PUT /accounts/<ACCT>/workers/domains {hostname: scrap.solovera.work, service: scrap-proxy}`
+4. **Firewall Hostinger**: porta TCP 18080 aperta (firewall id 352021)
+5. **Password dashboard**: `SCRAP_PASSWORD` passata nel campo `environment` (stringa `KEY=VALUE\nKEY=VALUE`) del deploy API
+
+### Deploy rapido dopo una modifica
+
+```bash
+# 1. push su main (triggera anche build GHCR, ma non serve per il VPS)
+git push origin main
+# 2. redeploy sul VPS via API (content = repo URL)
+curl -X POST "https://developers.hostinger.com/api/vps/v1/virtual-machines/1708775/docker" \
+  -H "Authorization: Bearer $HOSTINGER_API_TOKEN" -H "Content-Type: application/json" \
+  -d '{"project_name":"scrap-platform","content":"https://github.com/Lorenzocepparulo/scrap-platform","environment":"SCRAP_PASSWORD=...\nSCRAP_SESSION_SECRET=..."}'
+```
+
+### ⚠️ Nota portali (Sezione A)
+Idealista e Immobiliare.it proteggono con DataDome/Cloudflare: le richieste HTTP dirette (anche con browser headless) ricevono 403 dall'IP del VPS. Senza gateway anti-bot i monitor girano, salvano lo stato in SQLite e l'errore è **visibile nel Log della dashboard** (come da requisito). Per sbloccare lo scraping reale: configurare `SCRAP_ANTIBOT_URL` + `SCRAP_ANTIBOT_KEY` (es. ZenRows, come suggerisce il repo originale) oppure `SCRAP_PROXY` con proxy residenziali.
+
+### ⚠️ Nota Google Sheets
+Il sync su Sheets richiede solo `MATON_API_KEY` (connessione google-sheets già attiva su Maton). Senza la chiave, i monitor funzionano (dati in SQLite + dashboard) e l'errore è visibile nel Log.
+
+## Deploy alternativo (Traefik diretto, se si avrà un token CF con DNS edit)
 
 ```bash
 # 1. push dell'immagine (già automatico via GitHub Actions)
