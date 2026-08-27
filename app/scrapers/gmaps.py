@@ -37,7 +37,7 @@ FIELD_MAP = {
     "recensioni_link": "reviews_link",
 }
 # ⚠️ Output FISSO: tutte le ricerche producono sempre le stesse colonne (richiesta Lorenzo)
-DEFAULT_FIELDS = ["categoria", "indirizzo", "telefono", "sito_web"]
+DEFAULT_FIELDS = ["nome", "indirizzo", "telefono", "email", "sito_web", "recensioni", "rating"]
 
 # Target lead scelto dall'utente -> depth di scansione gosom
 TARGET_TO_DEPTH = {50: 8, 300: 50, 1000: 150, 10000: 400}
