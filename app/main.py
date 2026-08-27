@@ -217,6 +217,28 @@ def logs(request: Request, limit: int = 100):
     return db.list_log(limit=min(limit, 500))
 
 
+# ---------- Debug (temporaneo, per verificare il fetch dei portali) ----------
+@app.get("/api/debug/fetch")
+def debug_fetch(url: str, request: Request):
+    """Endpoint temporaneo: esegue fetch_html su un URL e mostra cosa restituisce."""
+    _require_auth(request)
+    from .anti_bot import fetch_html
+    try:
+        html = fetch_html(url)
+        return {
+            "len": len(html),
+            "has_item_link": "item-link" in html,
+            "has_inmueble": "inmueble" in html,
+            "has_nd_list": "nd-list__item" in html,
+            "has_it_card": "it-card" in html,
+            "has_cmsg": "cmsg" in html,
+            "has_datadome": "datadome" in html.lower(),
+            "snippet": html[:300],
+        }
+    except Exception as e:
+        return {"errore": str(e)}
+
+
 # ---------- Health ----------
 @app.get("/api/health")
 def health():
