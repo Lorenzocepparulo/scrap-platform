@@ -110,6 +110,14 @@ def init_db():
     with get_conn() as conn:
         conn.executescript(SCHEMA)
         _migrate(conn)
+        # anti-zombie: dopo un riavvio del container i job rimasti "in corso/in coda"
+        # sono morti (il processo non esiste piu') -> chiudili come errore
+        conn.execute(
+            "UPDATE jobs_maps SET stato='errore', completato_il=datetime('now') "
+            "WHERE stato IN ('in_corso','in_coda')"
+        )
+        # azzera progressi residui dei monitor (barre di avanzamento "appese")
+        conn.execute("UPDATE monitors SET progresso='' WHERE progresso != ''")
 
 
 @contextmanager
