@@ -66,8 +66,12 @@ def run_maps_job(job_id: int, query: str, campi: list[str]):
                 cmd += ["-proxies", config.PROXY_URL]
 
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=config.GMAPS_TIMEOUT_MIN * 60 + 120)
+            if proc.returncode != 0:
+                raise RuntimeError(f"gosom exit {proc.returncode}: {proc.stderr[-600:] or proc.stdout[-600:]}")
             if not os.path.exists(results_csv):
                 raise RuntimeError(f"gosom non ha prodotto output. {proc.stderr[-500:]}")
+            if os.path.getsize(results_csv) == 0:
+                raise RuntimeError(f"gosom ha prodotto un CSV vuoto. stderr: {proc.stderr[-500:]}")
 
             df = pd.read_csv(results_csv, dtype=str)
             # mappa le colonne CSV ai nomi italiani richiesti
