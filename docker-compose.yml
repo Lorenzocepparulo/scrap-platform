@@ -9,7 +9,7 @@ services:
     volumes:
       - scrap-data:/data
     environment:
-      - SCRAP_PASSWORD=${SCRAP_PASSWORD:-solovera-scrap-2026}
+      - SCRAP_PASSWORD=${SCRAP_PASSWORD:-4Y5A0YPXizNHmecF}
       - SCRAP_SESSION_SECRET=${SCRAP_SESSION_SECRET:-cambiami-sessione}
       - SCRAP_DEFAULT_FREQUENCY_HOURS=${SCRAP_DEFAULT_FREQUENCY_HOURS:-24}
       - SCRAP_TZ=${SCRAP_TZ:-Europe/Rome}
