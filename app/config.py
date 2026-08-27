@@ -29,8 +29,8 @@ PROXY_URL = os.environ.get("SCRAP_PROXY", "").strip() or None  # es. http://user
 # Gateway anti-bot opzionale (ZenRows-style): l'URL viene appeso a ?url=<target>&apikey=<key>
 ANTIBOT_URL = os.environ.get("SCRAP_ANTIBOT_URL", "").strip() or None  # es. https://api.zenrows.com/v1/
 ANTIBOT_KEY = os.environ.get("SCRAP_ANTIBOT_KEY", "").strip() or None
-MAX_PAGES = int(os.environ.get("SCRAP_MAX_PAGES", "3"))
-MAX_ANNUNCI = int(os.environ.get("SCRAP_MAX_ANNUNCI", "60"))
+MAX_PAGES = int(os.environ.get("SCRAP_MAX_PAGES", "10"))
+MAX_ANNUNCI = int(os.environ.get("SCRAP_MAX_ANNUNCI", "300"))
 
 # Auth dashboard
 DASHBOARD_PASSWORD = os.environ.get("SCRAP_PASSWORD", "solovera-scrap-2026")
