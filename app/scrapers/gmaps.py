@@ -15,18 +15,26 @@ import pandas as pd
 from .. import config
 from ..db import create_maps_job, update_maps_job
 
-# Mappa campi UI -> colonne CSV di gosom
+# Mappa campi UI -> colonne REALI del CSV di gosom (verificato su README ufficiale)
 FIELD_MAP = {
-    "nome": "name",
+    "nome": "title",
     "categoria": "category",
     "indirizzo": "address",
     "telefono": "phone",
     "sito_web": "website",
-    "email": "email",
-    "rating": "rating",
-    "recensioni": "reviews",
-    "orari": "opening_hours",
-    "coordinate": "coordinates",
+    "email": "emails",
+    "rating": "review_rating",
+    "recensioni": "review_count",
+    "orari": "open_hours",
+    "coordinate": "latitude",
+    "longitudine": "longitude",
+    "link": "link",
+    "place_id": "place_id",
+    "prezzo": "price_range",
+    "fuso": "timezone",
+    "piu_codice": "plus_code",
+    "stato": "status",
+    "recensioni_link": "reviews_link",
 }
 # ⚠️ Output FISSO: tutte le ricerche producono sempre le stesse colonne (richiesta Lorenzo)
 DEFAULT_FIELDS = ["categoria", "indirizzo", "telefono", "sito_web"]
@@ -35,7 +43,7 @@ DEFAULT_FIELDS = ["categoria", "indirizzo", "telefono", "sito_web"]
 TARGET_TO_DEPTH = {50: 8, 300: 50, 1000: 150, 10000: 400}
 
 # Tutti i campi che gosom può scrivere nel CSV (usati in modalità debug/test)
-ALL_FIELDS = ["nome", "categoria", "indirizzo", "telefono", "sito_web", "email", "rating", "recensioni", "orari", "coordinate"]
+ALL_FIELDS = ["nome", "categoria", "indirizzo", "telefono", "sito_web", "email", "rating", "recensioni", "orari", "coordinate", "longitudine", "link", "place_id", "prezzo", "fuso", "stato"]
 
 
 def _fields_to_csv_cols(campi: list[str]) -> list[str]:
@@ -82,8 +90,10 @@ def run_maps_job(job_id: int, query: str, campi: list[str], target: int = 0, kee
                 "-c", str(config.GMAPS_CONCURRENCY),
                 "-exit-on-inactivity", f"{config.GMAPS_TIMEOUT_MIN}m",
             ]
-            if "email" in [FIELD_MAP.get(c) for c in campi]:
+            if "emails" in [FIELD_MAP.get(c) for c in campi]:
                 cmd.append("-email")
+            if "user_reviews_extended" in [FIELD_MAP.get(c) for c in campi]:
+                cmd.append("-extra-reviews")
             if config.PROXY_URL:
                 cmd += ["-proxies", config.PROXY_URL]
 
@@ -114,8 +124,12 @@ def run_maps_job(job_id: int, query: str, campi: list[str], target: int = 0, kee
             # mappa le colonne CSV ai nomi italiani richiesti
             rename = {v: k for k, v in FIELD_MAP.items()}
             df = df.rename(columns={c: rename.get(c, c) for c in df.columns})
-            keep = [rename.get(c, c) for c in _fields_to_csv_cols(campi)]
-            keep = [k for k in keep if k in df.columns]
+            if keep_all:
+                # debug: mantieni TUTTE le colonne presenti nel CSV (nomi italiani dove mappati)
+                keep = list(df.columns)
+            else:
+                keep = [rename.get(c, c) for c in _fields_to_csv_cols(campi)]
+                keep = [k for k in keep if k in df.columns]
             df = df[keep] if keep else df
 
             out_dir = config.DATA_DIR / "downloads"
