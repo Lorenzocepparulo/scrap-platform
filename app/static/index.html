@@ -247,8 +247,7 @@ function createMonitor(){
     portale: 'immobiliare',
     url_ricerca: document.getElementById('m-url').value,
     frequenza_ore: parseFloat(document.getElementById('m-freq').value) || 24,
-    max_pages: parseInt(document.getElementById('m-pages').value) || 10,
-    campi
+    max_pages: parseInt(document.getElementById('m-pages').value) || 10
   })}).then(()=>{ loadMonitors(); loadCredits(); document.getElementById('m-nome').value=''; document.getElementById('m-url').value=''; })
    .catch(e=>alert('Errore: '+e.message));
 }
