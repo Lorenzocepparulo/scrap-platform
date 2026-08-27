@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrap Solovera — Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; }
+  .tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: 600; }
+  .card { @apply bg-white rounded-xl shadow-sm border border-gray-200 p-5; }
+  .badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+<nav class="bg-white border-b border-gray-200 sticky top-0 z-10">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">S</div>
+      <div>
+        <h1 class="text-lg font-bold text-gray-900 leading-tight">Scrap Solovera</h1>
+        <p class="text-xs text-gray-500">Piattaforma scraping interna</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="healthDot" class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+      <button onclick="logout()" class="text-sm text-gray-600 hover:text-red-600">Esci</button>
+    </div>
+  </div>
+</nav>
+
+<div class="max-w-7xl mx-auto px-4 py-6">
+  <!-- TABS -->
+  <div class="flex gap-6 border-b border-gray-200 mb-6 text-sm text-gray-500">
+    <button class="tab-active pb-3" data-tab="portali" onclick="switchTab('portali')">🏠 Portali immobiliari</button>
+    <button class="pb-3" data-tab="maps" onclick="switchTab('maps')">📍 Google Maps</button>
+    <button class="pb-3" data-tab="jobs" onclick="switchTab('jobs')">⚙️ Job attivi</button>
+    <button class="pb-3" data-tab="logs" onclick="switchTab('logs')">📋 Log</button>
+  </div>
+
+  <!-- ================= SEZIONE A: PORTALI ================= -->
+  <section id="tab-portali" class="tab-panel">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Form creazione monitor -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 h-fit">
+        <h2 class="font-bold text-gray-900 mb-4">Nuovo monitoraggio</h2>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Nome monitoraggio</label>
+            <input id="m-nome" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="es. Case Milano centro">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Portale</label>
+            <select id="m-portale" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">URL ricerca già filtrata (metodo primario)</label>
+            <input id="m-url" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="https://www.idealista.it/compravendita-case/milano/...">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Frequenza (ore)</label>
+            <input id="m-freq" type="number" value="24" min="1" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-2">Campi da tracciare</label>
+            <div id="m-campi" class="grid grid-cols-2 gap-1 text-xs text-gray-700"></div>
+          </div>
+          <button onclick="createMonitor()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg py-2.5 text-sm transition">▶ Avvia monitoraggio</button>
+        </div>
+      </div>
+
+      <!-- Lista monitor -->
+      <div class="lg:col-span-2 space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="font-bold text-gray-900">Monitoraggi attivi</h2>
+          <button onclick="loadMonitors()" class="text-sm text-blue-600 hover:underline">Aggiorna</button>
+        </div>
+        <div id="monitors-list" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <!-- Dettaglio annunci -->
+    <div id="monitor-detail" class="mt-6 hidden">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 id="detail-title" class="font-bold text-gray-900"></h2>
+          <button onclick="closeDetail()" class="text-sm text-gray-500 hover:text-gray-700">✕ Chiudi</button>
+        </div>
+        <div id="detail-body"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SEZIONE B: GOOGLE MAPS ================= -->
+  <section id="tab-maps" class="tab-panel hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 h-fit">
+        <h2 class="font-bold text-gray-900 mb-4">Scraping one-shot Google Maps</h2>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Query (libera + area)</label>
+            <input id="g-query" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="es. agenzie immobiliari Lombardia">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-2">Campi da includere</label>
+            <div id="g-campi" class="grid grid-cols-2 gap-1 text-xs text-gray-700"></div>
+          </div>
+          <button onclick="launchMaps()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg py-2.5 text-sm transition">▶ Avvia scraping</button>
+        </div>
+      </div>
+      <div class="lg:col-span-2">
+        <h2 class="font-bold text-gray-900 mb-4">Job Google Maps</h2>
+        <div id="maps-jobs" class="space-y-3"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= JOB ATTIVI ================= -->
+  <section id="tab-jobs" class="tab-panel hidden">
+    <h2 class="font-bold text-gray-900 mb-4">Job ricorrenti (monitoraggi)</h2>
+    <div id="jobs-list" class="space-y-3"></div>
+  </section>
+
+  <!-- ================= LOG ================= -->
+  <section id="tab-logs" class="tab-panel hidden">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-bold text-gray-900">Log esecuzioni ed errori</h2>
+      <button onclick="loadLogs()" class="text-sm text-blue-600 hover:underline">Aggiorna</button>
+    </div>
+    <div id="logs-list" class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-1 font-mono text-xs"></div>
+  </section>
+</div>
+
+<script>
+const CAMPI_PORTALI = [
+  ["prezzo","Prezzo"],["tipologia","Tipologia"],["superficie_mq","Superficie mq"],
+  ["locali","Locali"],["bagni","Bagni"],["piano","Piano"],["indirizzo","Indirizzo/Zona"],
+  ["contratto","Contratto"],["privato_agenzia","Privato/Agenzia"],["nome_agenzia","Nome agenzia"],
+  ["riferimento","Riferimento"],["url","URL"],["data_pubblicazione","Data pubblicazione"]
+];
+const CAMPI_MAPS = [
+  ["nome","Nome"],["categoria","Categoria"],["indirizzo","Indirizzo"],["telefono","Telefono"],
+  ["sito_web","Sito web"],["email","Email"],["rating","Rating"],["recensioni","Recensioni"],
+  ["orari","Orari"],["coordinate","Coordinate"]
+];
+
+function api(path, opts={}) {
+  return fetch(path, {headers: {'Content-Type':'application/json'}, ...opts}).then(async r => {
+    if (r.status === 401) { location.href = '/'; throw new Error('auth'); }
+    if (!r.ok) { const j = await r.json().catch(()=>({})); throw new Error(j.detail || r.statusText); }
+    return r.json();
+  });
+}
+function esc(s) { const d=document.createElement('div'); d.textContent=s??''; return d.innerHTML; }
+
+function switchTab(t) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.add('hidden'));
+  document.getElementById('tab-'+t).classList.remove('hidden');
+  document.querySelectorAll('[data-tab]').forEach(b=>{
+    b.classList.toggle('tab-active', b.dataset.tab===t);
+    if(b.dataset.tab===t) b.classList.remove('text-gray-500');
+    else b.classList.add('text-gray-500');
+  });
+  if(t==='jobs') loadMonitors();
+  if(t==='logs') loadLogs();
+  if(t==='maps') loadMapsJobs();
+}
+
+function logout(){ fetch('/api/logout',{method:'POST'}).then(()=>location.href='/'); }
+
+// ---- campi checkbox ----
+function buildCheckboxes(containerId, fields, checkedAll=true){
+  const c = document.getElementById(containerId);
+  c.innerHTML = fields.map(([k,l])=>`<label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" value="${k}" ${checkedAll?'checked':''} class="rounded border-gray-300"> ${l}</label>`).join('');
+}
+buildCheckboxes('m-campi', CAMPI_PORTALI);
+buildCheckboxes('g-campi', CAMPI_MAPS);
+
+// ---- portali ----
+api('/api/portali').then(list=>{
+  document.getElementById('m-portale').innerHTML = list.map(p=>`<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+}).catch(()=>{});
+
+// ---- monitor ----
+function loadMonitors(){
+  api('/api/monitors').then(list=>{
+    const el = document.getElementById('monitors-list');
+    const jobsEl = document.getElementById('jobs-list');
+    if(!list.length){ el.innerHTML='<p class="text-gray-500 text-sm">Nessun monitoraggio. Creane uno nella sezione qui accanto.</p>'; jobsEl.innerHTML='<p class="text-gray-500 text-sm">Nessun job attivo.</p>'; return; }
+    el.innerHTML = list.map(m=>monitorCard(m,false)).join('');
+    jobsEl.innerHTML = list.map(m=>monitorCard(m,true)).join('');
+  }).catch(e=>alert('Errore: '+e.message));
+}
+function monitorCard(m, jobView){
+  const stato = m.stato==='attivo'
+    ? '<span class="badge bg-green-100 text-green-700">● attivo</span>'
+    : '<span class="badge bg-amber-100 text-amber-700">⏸ in pausa</span>';
+  const sheet = m.sheet_url ? `<a href="${esc(m.sheet_url)}" target="_blank" class="text-xs text-blue-600 hover:underline">📊 Google Sheet</a>` : '';
+  const actions = `
+    <button onclick="runNow(${m.id})" class="text-xs bg-gray-100 hover:bg-gray-200 rounded px-2 py-1">▶ Esegui ora</button>
+    ${m.stato==='attivo'
+      ? `<button onclick="pauseMonitor(${m.id})" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-700 rounded px-2 py-1">⏸ Pausa</button>`
+      : `<button onclick="resumeMonitor(${m.id})" class="text-xs bg-green-50 hover:bg-green-100 text-green-700 rounded px-2 py-1">▶ Riprendi</button>`}
+    <button onclick="showDetail(${m.id})" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 rounded px-2 py-1">📋 Annunci (${m.annunci_count})</button>
+    <button onclick="delMonitor(${m.id})" class="text-xs bg-red-50 hover:bg-red-100 text-red-700 rounded px-2 py-1">🗑 Elimina</button>`;
+  if(jobView) return `
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center gap-3">
+      <div class="flex-1 min-w-[200px]">
+        <div class="font-semibold text-gray-900 text-sm">${esc(m.nome)} <span class="text-xs text-gray-400">#${m.id}</span></div>
+        <div class="text-xs text-gray-500">${esc(m.portale)} · ogni ${m.frequenza_ore}h · <span class="capitalize">${esc(m.stato)}</span></div>
+        <div class="text-xs text-gray-400 truncate max-w-md">${esc(m.url_ricerca)}</div>
+      </div>
+      <div class="text-xs text-gray-500">Prossima run: <b>${m.prossima_esecuzione ? esc(m.prossima_esecuzione) : '—'}</b></div>
+      <div class="flex gap-2">${actions}</div>
+    </div>`;
+  return `
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="flex-1 min-w-[200px]">
+          <div class="font-semibold text-gray-900">${esc(m.nome)} <span class="text-xs text-gray-400">#${m.id}</span></div>
+          <div class="text-xs text-gray-500 mt-0.5">Portale: <b class="capitalize">${esc(m.portale)}</b> · Frequenza: ogni ${m.frequenza_ore}h · ${stato}</div>
+          <div class="text-xs text-gray-400 truncate mt-1 max-w-lg">${esc(m.url_ricerca)}</div>
+        </div>
+        <div class="text-right text-xs text-gray-500 space-y-0.5">
+          ${sheet}
+          <div>Ultima run: ${m.ultima_esecuzione ? esc(m.ultima_esecuzione) : '—'}</div>
+          <div class="${m.esito_ultima && m.esito_ultima.startsWith('ERRORE') ? 'text-red-600 font-semibold' : ''}">${esc(m.esito_ultima || 'Mai eseguito')}</div>
+          <div>Prossima: ${m.prossima_esecuzione ? esc(m.prossima_esecuzione) : '—'}</div>
+        </div>
+      </div>
+      <div class="flex gap-2 mt-3">${actions}</div>
+    </div>`;
+}
+function createMonitor(){
+  const campi = [...document.querySelectorAll('#m-campi input:checked')].map(i=>i.value);
+  api('/api/monitors', {method:'POST', body: JSON.stringify({
+    nome: document.getElementById('m-nome').value,
+    portale: document.getElementById('m-portale').value,
+    url_ricerca: document.getElementById('m-url').value,
+    frequenza_ore: parseFloat(document.getElementById('m-freq').value) || 24,
+    campi
+  })}).then(()=>{ loadMonitors(); document.getElementById('m-nome').value=''; document.getElementById('m-url').value=''; })
+   .catch(e=>alert('Errore: '+e.message));
+}
+function runNow(id){ api(`/api/monitors/${id}/run`,{method:'POST'}).then(()=>{alert('Esecuzione avviata in background. Controlla il Log tra poco.'); loadMonitors();}); }
+function pauseMonitor(id){ api(`/api/monitors/${id}/pause`,{method:'POST'}).then(loadMonitors); }
+function resumeMonitor(id){ api(`/api/monitors/${id}/resume`,{method:'POST'}).then(loadMonitors); }
+function delMonitor(id){ if(confirm('Eliminare definitivamente questo monitoraggio e i suoi dati?')) api(`/api/monitors/${id}`,{method:'DELETE'}).then(loadMonitors); }
+function showDetail(id){
+  api(`/api/monitors/${id}`).then(m=>{
+    document.getElementById('monitor-detail').classList.remove('hidden');
+    document.getElementById('detail-title').textContent = `${m.nome} — ${m.annunci.length} annunci`;
+    const cols = ['annuncio_id','prezzo_attuale','prezzo_iniziale','num_ribassi','tipologia','superficie_mq','indirizzo','stato','data_primo_avvistamento','data_ultimo_avvistamento','giorni_online'];
+    const headers = {'annuncio_id':'ID','prezzo_attuale':'Prezzo','prezzo_iniziale':'Prezzo iniz.','num_ribassi':'Ribassi','tipologia':'Tipo','superficie_mq':'mq','indirizzo':'Zona','stato':'Stato','data_primo_avvistamento':'Primo visto','data_ultimo_avvistamento':'Ultimo visto','giorni_online':'Giorni online'};
+    let html = '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-left text-gray-500 border-b">'+
+      cols.map(c=>`<th class="py-2 pr-3">${headers[c]}</th>`).join('')+'</tr></thead><tbody>';
+    m.annunci.forEach(a=>{
+      const prezzo = a.prezzo_attuale ? '€ '+Number(a.prezzo_attuale).toLocaleString('it-IT') : '—';
+      const stato = a.stato==='attivo' ? '<span class="text-green-600">attivo</span>' : '<span class="text-red-500">venduto/rimosso</span>';
+      html += `<tr class="border-b border-gray-100">`+cols.map(c=>{
+        if(c==='prezzo_attuale') return `<td class="py-2 pr-3 font-semibold">${prezzo}</td>`;
+        if(c==='stato') return `<td class="py-2 pr-3">${stato}</td>`;
+        return `<td class="py-2 pr-3">${esc(a[c])}</td>`;
+      }).join('')+`</tr>`;
+    });
+    html += '</tbody></table></div>';
+    if(m.ribassi && m.ribassi.length){
+      html += `<h3 class="font-bold text-sm mt-4 mb-2">Ribassi rilevati (${m.ribassi.length})</h3><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-left text-gray-500 border-b"><th class="py-2 pr-3">ID</th><th class="py-2 pr-3">Data</th><th class="py-2 pr-3">Prezzo vecchio</th><th class="py-2 pr-3">Prezzo nuovo</th><th class="py-2 pr-3">%</th></tr></thead><tbody>`+
+      m.ribassi.map(r=>`<tr class="border-b border-gray-100"><td class="py-2 pr-3">${esc(r.annuncio_id)}</td><td class="py-2 pr-3">${esc(r.data)}</td><td class="py-2 pr-3">€ ${Number(r.prezzo_vecchio).toLocaleString('it-IT')}</td><td class="py-2 pr-3 font-semibold text-green-600">€ ${Number(r.prezzo_nuovo).toLocaleString('it-IT')}</td><td class="py-2 pr-3">-${esc(r.pct)}%</td></tr>`).join('')+
+      '</tbody></table></div>';
+    }
+    document.getElementById('detail-body').innerHTML = html;
+  }).catch(e=>alert('Errore: '+e.message));
+}
+function closeDetail(){ document.getElementById('monitor-detail').classList.add('hidden'); }
+
+// ---- maps ----
+function launchMaps(){
+  const campi = [...document.querySelectorAll('#g-campi input:checked')].map(i=>i.value);
+  api('/api/maps', {method:'POST', body: JSON.stringify({query: document.getElementById('g-query').value, campi})})
+    .then(()=>{ alert('Scraping avviato. Il file Excel sarà pronto in qualche minuto qui sotto.'); loadMapsJobs(); })
+    .catch(e=>alert('Errore: '+e.message));
+}
+function loadMapsJobs(){
+  api('/api/maps/jobs').then(jobs=>{
+    const el = document.getElementById('maps-jobs');
+    if(!jobs.length){ el.innerHTML='<p class="text-gray-500 text-sm">Nessun job eseguito.</p>'; return; }
+    const stati = {in_coda:'<span class="badge bg-gray-100 text-gray-600">in coda</span>', in_corso:'<span class="badge bg-blue-100 text-blue-700">in corso…</span>', completato:'<span class="badge bg-green-100 text-green-700">completato</span>', errore:'<span class="badge bg-red-100 text-red-700">errore</span>'};
+    el.innerHTML = jobs.map(j=>`
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center gap-3">
+        <div class="flex-1 min-w-[200px]">
+          <div class="font-semibold text-gray-900 text-sm">${esc(j.query)}</div>
+          <div class="text-xs text-gray-500">Creato: ${esc(j.creato_il)} ${j.completato_il ? '· Completato: '+esc(j.completato_il) : ''}</div>
+        </div>
+        ${stati[j.stato]||j.stato}
+        ${j.stato==='completato' && j.filename ? `<a href="/api/download/${encodeURIComponent(j.filename)}" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3 py-1.5 font-semibold">⬇ Scarica Excel</a>` : ''}
+      </div>`).join('');
+  }).catch(()=>{});
+}
+
+// ---- logs ----
+function loadLogs(){
+  api('/api/logs?limit=200').then(logs=>{
+    const el = document.getElementById('logs-list');
+    if(!logs.length){ el.innerHTML='<p class="text-gray-500">Nessun log.</p>'; return; }
+    el.innerHTML = logs.map(l=>{
+      const color = l.livello==='errore' ? 'text-red-600' : 'text-gray-600';
+      return `<div class="${color} py-1 border-b border-gray-100 last:border-0"><span class="text-gray-400">${esc(l.timestamp)}</span> [${esc(l.livello)}] ${l.monitor_id?'#'+l.monitor_id+' ':''}${esc(l.messaggio)}</div>`;
+    }).join('');
+  }).catch(()=>{});
+}
+
+// init
+loadMonitors(); loadLogs(); loadMapsJobs();
+setInterval(()=>fetch('/api/health').then(r=>{document.getElementById('healthDot').className='w-2.5 h-2.5 rounded-full '+(r.ok?'bg-green-500':'bg-red-500');}).catch(()=>{}), 30000);
+</script>
+</body>
+</html>

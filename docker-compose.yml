@@ -1,0 +1,33 @@
+services:
+  scrap:
+    image: ghcr.io/lorenzocepparulo/scrap-platform:latest
+    container_name: scrap-platform
+    restart: unless-stopped
+    volumes:
+      - scrap-data:/data
+    environment:
+      - SCRAP_PASSWORD=${SCRAP_PASSWORD:-solovera-scrap-2026}
+      - SCRAP_SESSION_SECRET=${SCRAP_SESSION_SECRET:-cambiami-sessione}
+      - SCRAP_DEFAULT_FREQUENCY_HOURS=${SCRAP_DEFAULT_FREQUENCY_HOURS:-24}
+      - SCRAP_TZ=${SCRAP_TZ:-Europe/Rome}
+      - SCRAP_DELAY_MIN=${SCRAP_DELAY_MIN:-2.5}
+      - SCRAP_DELAY_MAX=${SCRAP_DELAY_MAX:-6.0}
+      - SCRAP_MAX_PAGES=${SCRAP_MAX_PAGES:-3}
+      - SCRAP_MAX_ANNUNCI=${SCRAP_MAX_ANNUNCI:-60}
+      - SCRAP_PROXY=${SCRAP_PROXY:-}
+      - SCRAP_ANTIBOT_URL=${SCRAP_ANTIBOT_URL:-}
+      - SCRAP_ANTIBOT_KEY=${SCRAP_ANTIBOT_KEY:-}
+      - SCRAP_GMAPS_DEPTH=${SCRAP_GMAPS_DEPTH:-3}
+      - SCRAP_GMAPS_CONCURRENCY=${SCRAP_GMAPS_CONCURRENCY:-2}
+      - SCRAP_GMAPS_TIMEOUT_MIN=${SCRAP_GMAPS_TIMEOUT_MIN:-10}
+      - GOOGLE_SERVICE_ACCOUNT_JSON=${GOOGLE_SERVICE_ACCOUNT_JSON:-}
+      - SCRAP_SHEET_SHARE_EMAIL=${SCRAP_SHEET_SHARE_EMAIL:-}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.scrap.rule=Host(`scrap.solovera.work`)"
+      - "traefik.http.routers.scrap.entrypoints=websecure"
+      - "traefik.http.routers.scrap.tls.certresolver=letsencrypt"
+      - "traefik.http.services.scrap.loadbalancer.server.port=8000"
+
+volumes:
+  scrap-data:

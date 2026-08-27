@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrap Solovera — Accesso</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+<div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 w-full max-w-sm">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold">S</div>
+    <div>
+      <h1 class="text-xl font-bold text-gray-900">Scrap Solovera</h1>
+      <p class="text-xs text-gray-500">Piattaforma scraping interna</p>
+    </div>
+  </div>
+  <form onsubmit="doLogin(event)">
+    <label class="block text-xs font-medium text-gray-600 mb-1">Password</label>
+    <input id="pw" type="password" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4" placeholder="••••••••">
+    <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg py-2.5 text-sm">Accedi</button>
+    <p id="err" class="text-red-600 text-xs mt-3 hidden">Password errata</p>
+  </form>
+</div>
+<script>
+function doLogin(e){
+  e.preventDefault();
+  fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.getElementById('pw').value})})
+    .then(r=>{ if(r.ok) location.href='/'; else { document.getElementById('err').classList.remove('hidden'); } })
+    .catch(()=>{ document.getElementById('err').classList.remove('hidden'); });
+}
+</script>
+</body>
+</html>
