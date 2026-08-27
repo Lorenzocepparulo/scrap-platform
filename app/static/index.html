@@ -255,19 +255,36 @@ function runNow(id){ api(`/api/monitors/${id}/run`,{method:'POST'}).then(()=>{lo
 function pauseMonitor(id){ api(`/api/monitors/${id}/pause`,{method:'POST'}).then(loadMonitors); }
 function resumeMonitor(id){ api(`/api/monitors/${id}/resume`,{method:'POST'}).then(loadMonitors); }
 function delMonitor(id){ if(confirm('Eliminare definitivamente questo monitoraggio e i suoi dati?')) api(`/api/monitors/${id}`,{method:'DELETE'}).then(loadMonitors); }
-function showDetail(id){
-  api(`/api/monitors/${id}`).then(m=>{
-    document.getElementById('monitor-detail').classList.remove('hidden');
-    document.getElementById('detail-title').textContent = `${m.nome} — ${m.annunci.length} annunci`;
-    const cols = ['annuncio_id','prezzo_attuale','tipologia','superficie_mq','locali','bagni','piano','indirizzo','nome_agenzia','url','stato','giorni_online'];
-    const headers = {'annuncio_id':'ID','prezzo_attuale':'Prezzo','tipologia':'Tipo','superficie_mq':'mq','locali':'Locali','bagni':'Bagni','piano':'Piano','indirizzo':'Zona','nome_agenzia':'Agenzia','url':'Link','stato':'Stato','giorni_online':'Giorni online'};
-    let html = `<div class="flex items-center gap-3 mb-3">
-        <button onclick="exportMonitor(${m.id})" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3 py-1.5 font-semibold">⬇ Scarica Excel</button>
-        <span class="text-xs text-gray-500">${m.annunci.length} annunci</span>
-      </div>`;
-    html += '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-left text-gray-500 border-b">'+
-      cols.map(c=>`<th class="py-2 pr-3">${headers[c]}</th>`).join('')+'</tr></thead><tbody>';
-    m.annunci.forEach(a=>{
+let detailSort = {key:'prezzo_attuale', dir:-1};
+function sortDetail(key){
+  if(detailSort.key===key) detailSort.dir *= -1;
+  else { detailSort.key = key; detailSort.dir = -1; }
+  const m = window._detailMonitor;
+  if(m) renderDetailTable(m);
+}
+function renderDetailTable(m){
+  document.getElementById('detail-title').textContent = `${m.nome} — ${m.annunci.length} annunci`;
+  const cols = ['annuncio_id','prezzo_attuale','tipologia','superficie_mq','locali','bagni','piano','indirizzo','nome_agenzia','url','stato','giorni_online'];
+  const headers = {'annuncio_id':'ID','prezzo_attuale':'Prezzo','tipologia':'Tipo','superficie_mq':'mq','locali':'Locali','bagni':'Bagni','piano':'Piano','indirizzo':'Zona','nome_agenzia':'Agenzia','url':'Link','stato':'Stato','giorni_online':'Giorni online'};
+  const arrow = k => detailSort.key===k ? (detailSort.dir>0?' ▲':' ▼') : '';
+  let html = `<div class="flex items-center gap-3 mb-3">
+      <button onclick="exportMonitor(${m.id})" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3 py-1.5 font-semibold">⬇ Scarica Excel</button>
+      <span class="text-xs text-gray-500">${m.annunci.length} annunci · clicca su una colonna per ordinare</span>
+    </div>`;
+  const sortable = {'annuncio_id':1,'prezzo_attuale':1,'superficie_mq':1,'prezzo':1,'locali':1,'bagni':1,'piano':1,'indirizzo':1,'nome_agenzia':1,'stato':1,'giorni_online':1};
+  html += '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-left text-gray-500 border-b">'+
+    cols.map(c=>`<th class="py-2 pr-3 ${sortable[c]?'cursor-pointer select-none hover:text-blue-600':''}" ${sortable[c]?`onclick="sortDetail('${c}')"`:''}>${headers[c]}${arrow(c)}</th>`).join('')+'</tr></thead><tbody>';
+  let annunci = [...m.annunci];
+  annunci.sort((x,y)=>{
+    let a=x, b=y;
+    if(detailSort.key==='prezzo_attuale'){ a=x.prezzo_attuale||0; b=y.prezzo_attuale||0; }
+    else if(detailSort.key==='superficie_mq'){ a=parseFloat((JSON.parse(x.dati||'{}').superficie_mq||'').replace('m²','').trim())||0; b=parseFloat((JSON.parse(y.dati||'{}').superficie_mq||'').replace('m²','').trim())||0; }
+    else if(['tipologia','indirizzo','nome_agenzia','stato'].includes(detailSort.key)){ a=(JSON.parse(x.dati||'{}')[detailSort.key]||x[detailSort.key]||'').toString().toLowerCase(); b=(JSON.parse(y.dati||'{}')[detailSort.key]||y[detailSort.key]||'').toString().toLowerCase(); }
+    else { a=x[detailSort.key]||''; b=y[detailSort.key]||''; }
+    if(typeof a==='number' && typeof b==='number') return (a-b)*detailSort.dir;
+    return String(a).localeCompare(String(b))*detailSort.dir;
+  });
+  annunci.forEach(a=>{
       let d = {};
       try { d = JSON.parse(a.dati || '{}'); } catch(e){}
       const prezzo = a.prezzo_attuale ? '€ '+Number(a.prezzo_attuale).toLocaleString('it-IT') : '—';
@@ -282,11 +299,17 @@ function showDetail(id){
     });
     html += '</tbody></table></div>';
     if(m.ribassi && m.ribassi.length){
-      html += `<h3 class="font-bold text-sm mt-4 mb-2">Ribassi rilevati (${m.ribassi.length})</h3><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-left text-gray-500 border-b"><th class="py-2 pr-3">ID</th><th class="py-2 pr-3">Data</th><th class="py-2 pr-3">Prezzo vecchio</th><th class="py-2 pr-3">Prezzo nuovo</th><th class="py-2 pr-3">%</th></tr></thead><tbody>`+
-      m.ribassi.map(r=>`<tr class="border-b border-gray-100"><td class="py-2 pr-3">${esc(r.annuncio_id)}</td><td class="py-2 pr-3">${esc(r.data)}</td><td class="py-2 pr-3">€ ${Number(r.prezzo_vecchio).toLocaleString('it-IT')}</td><td class="py-2 pr-3 font-semibold text-green-600">€ ${Number(r.prezzo_nuovo).toLocaleString('it-IT')}</td><td class="py-2 pr-3">-${esc(r.pct)}%</td></tr>`).join('')+
+      html += `<h3 class="font-bold text-sm mt-4 mb-2">Ribassi rilevati (${m.ribassi.length})</h3><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-left text-gray-500 border-b"><th class="py-2 pr-3">ID</th><th class="py-2 pr-3">Data</th><th class="py-2 pr-3">Dopo N giorni</th><th class="py-2 pr-3">Prezzo vecchio</th><th class="py-2 pr-3">Prezzo nuovo</th><th class="py-2 pr-3">%</th></tr></thead><tbody>`+
+      m.ribassi.map(r=>`<tr class="border-b border-gray-100"><td class="py-2 pr-3">${esc(r.annuncio_id)}</td><td class="py-2 pr-3">${esc(r.data)}</td><td class="py-2 pr-3 font-semibold">${r.giorni_dal_primo!=null?r.giorni_dal_primo+' gg':'—'}</td><td class="py-2 pr-3">€ ${Number(r.prezzo_vecchio).toLocaleString('it-IT')}</td><td class="py-2 pr-3 font-semibold text-green-600">€ ${Number(r.prezzo_nuovo).toLocaleString('it-IT')}</td><td class="py-2 pr-3">-${esc(r.pct)}%</td></tr>`).join('')+
       '</tbody></table></div>';
     }
     document.getElementById('detail-body').innerHTML = html;
+}
+function showDetail(id){
+  api(`/api/monitors/${id}`).then(m=>{
+    document.getElementById('monitor-detail').classList.remove('hidden');
+    window._detailMonitor = m;
+    renderDetailTable(m);
   }).catch(e=>alert('Errore: '+e.message));
 }
 function exportMonitor(id){

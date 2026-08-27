@@ -120,8 +120,27 @@ def get_monitor_detail(mid: int, request: Request):
 
 
 def _ribassi(monitor_id: int):
+    """Ribassi del monitor con giorni trascorsi dal primo avvistamento."""
+    from datetime import datetime as _dt
     with db.db() as conn:
-        return conn.execute("SELECT * FROM ribassi WHERE monitor_id=? ORDER BY id DESC LIMIT 100", (monitor_id,)).fetchall()
+        rows = [dict(r) for r in conn.execute(
+            "SELECT * FROM ribassi WHERE monitor_id=? ORDER BY id DESC LIMIT 100", (monitor_id,)).fetchall()]
+    # data primo avvistamento di ogni annuncio
+    primo = {}
+    with db.db() as conn:
+        for r in conn.execute("SELECT annuncio_id, data_primo_avvistamento FROM annunci WHERE monitor_id=?", (monitor_id,)).fetchall():
+            primo[r["annuncio_id"]] = r["data_primo_avvistamento"]
+    for r in rows:
+        r["giorni_dal_primo"] = None
+        try:
+            d1 = _dt.strptime(r["data"], "%Y-%m-%d %H:%M:%S")
+            d0 = primo.get(r["annuncio_id"])
+            if d0:
+                d0 = _dt.strptime(d0, "%Y-%m-%d %H:%M:%S")
+                r["giorni_dal_primo"] = max(0, (d1 - d0).days)
+        except Exception:
+            pass
+    return rows
 
 
 @app.post("/api/monitors/{mid}/run")
