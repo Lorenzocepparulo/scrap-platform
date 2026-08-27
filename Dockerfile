@@ -23,8 +23,9 @@ RUN GOFLAGS=-mod=mod go install github.com/mxschmitt/playwright-go/cmd/playwrigh
     && apt-get purge -y golang-go && apt-get autoremove -y && rm -rf /root/go/pkg /root/.cache/go-build /var/lib/apt/lists/*
 
 COPY requirements.txt .
+# playwright python: installa il browser NELLO STESSO PATH di gosom (deps di sistema già presenti sopra)
 RUN pip install --no-cache-dir -r requirements.txt \
-    && python -m playwright install chromium --with-deps
+    && PLAYWRIGHT_BROWSERS_PATH=/ms-playwright python -m playwright install chromium
 
 COPY app ./app
 RUN mkdir -p /data/downloads
