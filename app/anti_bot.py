@@ -2,8 +2,9 @@
 
 Tier 1: richieste HTTP dirette (requests, UA rotanti).
 Tier 2: se il portale risponde 403 (DataDome/Cloudflare), fallback su browser
-headless (Playwright + Chromium) con la stessa interfaccia: fetch_html().
+(headful con Xvfb se disponibile, altrimenti headless) con la stessa interfaccia: fetch_html().
 """
+import os
 import random
 import time
 
