@@ -30,7 +30,22 @@ def run_monitor(monitor_id: int) -> dict:
         import json
         if isinstance(filtri, str):
             filtri = json.loads(filtri) if filtri else {}
-        annunci = scraper.scrape(monitor["url_ricerca"], filtri)
+        max_pages = monitor.get("max_pages") or 0
+
+        def _progress(page, totale, trovati):
+            """Aggiorna il progresso live del monitor (mostrato come barra in dashboard)."""
+            try:
+                db.update_monitor(monitor_id, progresso=json.dumps(
+                    {"pagina": page, "totale": totale, "trovati": trovati}))
+            except Exception:
+                pass
+
+        try:
+            annunci = scraper.scrape(monitor["url_ricerca"], filtri,
+                                     max_pages=max_pages or None, progress_cb=_progress)
+        except TypeError:
+            # scraper che non supporta ancora max_pages/progress_cb (es. idealista)
+            annunci = scraper.scrape(monitor["url_ricerca"], filtri)
 
         # 1. aggiorna/inserisci annunci visti ora
         seen_ids = set()
@@ -66,7 +81,7 @@ def run_monitor(monitor_id: int) -> dict:
                  "scomparsi": len(scomparsi), "totale": len(annunci),
                  "riepilogo": riepilogo}
 
-        db.update_monitor(monitor_id, ultima_esecuzione=now, esito_ultima=riepilogo)
+        db.update_monitor(monitor_id, ultima_esecuzione=now, esito_ultima=riepilogo, progresso="")
         db.add_log("info", f"Monitor '{monitor['nome']}': {riepilogo}", monitor_id)
 
         # 3. sync Google Sheets (se configurato)
@@ -74,7 +89,7 @@ def run_monitor(monitor_id: int) -> dict:
 
     except Exception as e:
         db.add_log("errore", f"Monitor '{monitor['nome']}': {e}", monitor_id)
-        db.update_monitor(monitor_id, ultima_esecuzione=now, esito_ultima=f"ERRORE: {e}")
+        db.update_monitor(monitor_id, ultima_esecuzione=now, esito_ultima=f"ERRORE: {e}", progresso="")
         esito = {"ok": False, "errore": str(e)}
 
     return esito

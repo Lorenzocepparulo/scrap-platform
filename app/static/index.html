@@ -58,6 +58,14 @@
             <input id="m-url" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="https://www.idealista.it/compravendita-case/milano/...">
           </div>
           <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Quante pagine vuoi?</label>
+            <select id="m-pages" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+              <option value="10" selected>Fino a 10 pagine</option>
+              <option value="50">Fino a 50 pagine</option>
+              <option value="100">Fino a 100 pagine</option>
+            </select>
+          </div>
+          <div>
             <label class="block text-xs font-medium text-gray-600 mb-1">Frequenza (ore)</label>
             <input id="m-freq" type="number" value="24" min="1" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
           </div>
@@ -186,13 +194,27 @@ api('/api/portali').then(list=>{
 }).catch(()=>{});
 
 // ---- monitor ----
+let monPollTimer = null;
+function startMonitorsPolling(){
+  if(monPollTimer) return;
+  monPollTimer = setInterval(()=>{
+    api('/api/monitors').then(list=>{
+      renderMonitors(list);
+      if(!list.some(m=>m.progresso)){ clearInterval(monPollTimer); monPollTimer=null; }
+    }).catch(()=>{ clearInterval(monPollTimer); monPollTimer=null; });
+  }, 4000);
+}
+function renderMonitors(list){
+  const el = document.getElementById('monitors-list');
+  const jobsEl = document.getElementById('jobs-list');
+  if(!list.length){ el.innerHTML='<p class="text-gray-500 text-sm">Nessun monitoraggio. Creane uno nella sezione qui accanto.</p>'; jobsEl.innerHTML='<p class="text-gray-500 text-sm">Nessun job attivo.</p>'; return; }
+  el.innerHTML = list.map(m=>monitorCard(m,false)).join('');
+  jobsEl.innerHTML = list.map(m=>monitorCard(m,true)).join('');
+}
 function loadMonitors(){
   api('/api/monitors').then(list=>{
-    const el = document.getElementById('monitors-list');
-    const jobsEl = document.getElementById('jobs-list');
-    if(!list.length){ el.innerHTML='<p class="text-gray-500 text-sm">Nessun monitoraggio. Creane uno nella sezione qui accanto.</p>'; jobsEl.innerHTML='<p class="text-gray-500 text-sm">Nessun job attivo.</p>'; return; }
-    el.innerHTML = list.map(m=>monitorCard(m,false)).join('');
-    jobsEl.innerHTML = list.map(m=>monitorCard(m,true)).join('');
+    renderMonitors(list);
+    if(list.some(m=>m.progresso)) startMonitorsPolling();
   }).catch(e=>alert('Errore: '+e.message));
 }
 function monitorCard(m, jobView){
@@ -207,6 +229,14 @@ function monitorCard(m, jobView){
       : `<button onclick="resumeMonitor(${m.id})" class="text-xs bg-green-50 hover:bg-green-100 text-green-700 rounded px-2 py-1">▶ Riprendi</button>`}
     <button onclick="showDetail(${m.id})" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 rounded px-2 py-1">📋 Annunci (${m.annunci_count})</button>
     <button onclick="delMonitor(${m.id})" class="text-xs bg-red-50 hover:bg-red-100 text-red-700 rounded px-2 py-1">🗑 Elimina</button>`;
+  const progress = m.progresso ? (()=>{ try { return JSON.parse(m.progresso); } catch(e){ return null; } })() : null;
+  const progBar = progress ? (()=>{
+    const pct = progress.totale ? Math.min(100, Math.round(progress.pagina/progress.totale*100)) : 0;
+    return `<div class="w-full mt-2">
+      <div class="flex justify-between text-xs text-gray-500 mb-1"><span>⏳ Scraping in corso…</span><span>pagina ${progress.pagina}/${progress.totale} · ${progress.trovati} annunci trovati</span></div>
+      <div class="h-2 bg-gray-200 rounded-full overflow-hidden"><div class="h-full bg-blue-500 rounded-full transition-all duration-700" style="width:${pct}%"></div></div>
+    </div>`;
+  })() : '';
   if(jobView) return `
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center gap-3">
       <div class="flex-1 min-w-[200px]">
@@ -216,6 +246,7 @@ function monitorCard(m, jobView){
       </div>
       <div class="text-xs text-gray-500">Prossima run: <b>${m.prossima_esecuzione ? esc(m.prossima_esecuzione) : '—'}</b></div>
       <div class="flex gap-2">${actions}</div>
+      ${progBar}
     </div>`;
   return `
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
@@ -232,6 +263,7 @@ function monitorCard(m, jobView){
           <div>Prossima: ${m.prossima_esecuzione ? esc(m.prossima_esecuzione) : '—'}</div>
         </div>
       </div>
+      ${progBar}
       <div class="flex gap-2 mt-3">${actions}</div>
     </div>`;
 }
@@ -242,11 +274,12 @@ function createMonitor(){
     portale: document.getElementById('m-portale').value,
     url_ricerca: document.getElementById('m-url').value,
     frequenza_ore: parseFloat(document.getElementById('m-freq').value) || 24,
+    max_pages: parseInt(document.getElementById('m-pages').value) || 10,
     campi
   })}).then(()=>{ loadMonitors(); document.getElementById('m-nome').value=''; document.getElementById('m-url').value=''; })
    .catch(e=>alert('Errore: '+e.message));
 }
-function runNow(id){ api(`/api/monitors/${id}/run`,{method:'POST'}).then(()=>{alert('Esecuzione avviata in background. Controlla il Log tra poco.'); loadMonitors();}); }
+function runNow(id){ api(`/api/monitors/${id}/run`,{method:'POST'}).then(()=>{loadMonitors(); startMonitorsPolling();}); }
 function pauseMonitor(id){ api(`/api/monitors/${id}/pause`,{method:'POST'}).then(loadMonitors); }
 function resumeMonitor(id){ api(`/api/monitors/${id}/resume`,{method:'POST'}).then(loadMonitors); }
 function delMonitor(id){ if(confirm('Eliminare definitivamente questo monitoraggio e i suoi dati?')) api(`/api/monitors/${id}`,{method:'DELETE'}).then(loadMonitors); }

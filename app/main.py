@@ -89,7 +89,7 @@ async def create_monitor(request: Request):
     mid = db.create_monitor(
         nome=body["nome"], portale=body["portale"], url_ricerca=body["url_ricerca"],
         filtri=body.get("filtri"), frequenza_ore=body.get("frequenza_ore", config.DEFAULT_FREQUENCY_HOURS),
-        campi=body.get("campi"),
+        campi=body.get("campi"), max_pages=int(body.get("max_pages") or 0),
     )
     scheduler.schedule_monitor(mid)
     db.add_log("info", f"Monitor '{body['nome']}' creato (id {mid})")

@@ -53,10 +53,12 @@ class ImmobiliareScraper(PortalScraper):
             return m.group(1)
         return url
 
-    def scrape(self, url_ricerca: str, filtri: dict | None = None) -> list[Annuncio]:
+    def scrape(self, url_ricerca: str, filtri: dict | None = None,
+               max_pages: int | None = None, progress_cb=None) -> list[Annuncio]:
+        """max_pages: limite pagine (None = default config). progress_cb(page, max_pages, trovati)."""
         filtri = filtri or {}
         annunci: list[Annuncio] = []
-        max_pages = config.MAX_PAGES
+        max_pages = max_pages or config.MAX_PAGES
 
         for page in range(1, max_pages + 1):
             page_url = _listing_page_url(url_ricerca, page)
@@ -83,6 +85,11 @@ class ImmobiliareScraper(PortalScraper):
                     return annunci
             if found_here == 0:
                 break
+            if progress_cb:
+                try:
+                    progress_cb(page, max_pages, len(annunci))
+                except Exception:
+                    pass
             polite_delay()
 
         return annunci

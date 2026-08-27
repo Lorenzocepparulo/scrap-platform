@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS monitors (
     sheet_url TEXT,
     ultima_esecuzione TEXT,
     esito_ultima TEXT,
+    max_pages INTEGER DEFAULT 0,        -- 0 = usa il default config; altrimenti pagine max
+    progresso TEXT DEFAULT '',          -- JSON live: {"pagina":N,"totale":M,"trovati":K}
     creato_il TEXT DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS annunci (
@@ -74,6 +76,11 @@ CREATE TABLE IF NOT EXISTS jobs_maps (
 
 def _migrate(conn):
     """Aggiunge colonne mancanti su DB esistenti (migrazione leggera)."""
+    mcols = {r[1] for r in conn.execute("PRAGMA table_info(monitors)").fetchall()}
+    if "max_pages" not in mcols:
+        conn.execute("ALTER TABLE monitors ADD COLUMN max_pages INTEGER DEFAULT 0")
+    if "progresso" not in mcols:
+        conn.execute("ALTER TABLE monitors ADD COLUMN progresso TEXT DEFAULT ''")
     cols = {r[1] for r in conn.execute("PRAGMA table_info(jobs_maps)").fetchall()}
     if "target" not in cols:
         conn.execute("ALTER TABLE jobs_maps ADD COLUMN target INTEGER DEFAULT 0")
@@ -106,11 +113,11 @@ def db():
 
 
 # ---------- MONITOR ----------
-def create_monitor(nome, portale, url_ricerca, filtri=None, frequenza_ore=24, campi=None):
+def create_monitor(nome, portale, url_ricerca, filtri=None, frequenza_ore=24, campi=None, max_pages=0):
     with db() as conn:
         cur = conn.execute(
-            "INSERT INTO monitors (nome, portale, url_ricerca, filtri, frequenza_ore, campi) VALUES (?,?,?,?,?,?)",
-            (nome, portale, url_ricerca, json.dumps(filtri or {}), frequenza_ore, json.dumps(campi or {})),
+            "INSERT INTO monitors (nome, portale, url_ricerca, filtri, frequenza_ore, campi, max_pages) VALUES (?,?,?,?,?,?,?)",
+            (nome, portale, url_ricerca, json.dumps(filtri or {}), frequenza_ore, json.dumps(campi or {}), max_pages),
         )
         return cur.lastrowid
 
@@ -128,7 +135,7 @@ def list_monitors():
 
 
 def update_monitor(monitor_id, **fields):
-    allowed = {"nome", "portale", "url_ricerca", "filtri", "frequenza_ore", "campi", "stato", "sheet_id", "sheet_url", "ultima_esecuzione", "esito_ultima"}
+    allowed = {"nome", "portale", "url_ricerca", "filtri", "frequenza_ore", "campi", "stato", "sheet_id", "sheet_url", "ultima_esecuzione", "esito_ultima", "max_pages", "progresso"}
     sets, vals = [], []
     for k, v in fields.items():
         if k in allowed:
